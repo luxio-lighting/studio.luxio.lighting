@@ -76,6 +76,7 @@
 .toolbar-divider { height: 20px; width: 1px; background: #404040; margin: 0 4px; }
 .device-select { width: 220px; height: 30px !important; font-size: 12px; background: #171717 !important; border-color: #404040; box-shadow: none; }
 .device-select [data-slot=select-value] { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.device-select .device-ip { display: none; }
 .test-active { color: var(--foreground); }
 .workspace { flex: 1; min-height: 0; }
 .sidebar { height: 100%; display: flex; flex-direction: column; background: #171717; }

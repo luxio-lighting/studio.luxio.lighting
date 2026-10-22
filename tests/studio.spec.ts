@@ -106,7 +106,7 @@ test('discovery and failed device save keep the edited document', async ({ page 
   });
   await page.goto('/');
   await page.getByRole('combobox', { name: 'Device', exact: true }).click();
-  await page.getByRole('option', { name: 'Desk', exact: true }).click();
+  await page.getByRole('option', { name: /Desk/ }).click();
   await page.getByRole('button', { name: 'Actions for Aurora' }).click();
   await page.getByRole('menuitem', { name: 'Rename', exact: true }).click();
   await page.getByRole('textbox', { name: 'Animation name' }).fill('Keep this draft');

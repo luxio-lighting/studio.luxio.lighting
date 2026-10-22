@@ -7,7 +7,7 @@ import EditorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker';
 import { Play, Square, Plus, ChevronDown, ChevronRight, FileCode2, Monitor, RefreshCw, Save, MoreHorizontal, PanelLeft, X, Check, LoaderCircle, Radio } from 'lucide-react';
 import { Button } from './components/ui/button';
 import { Input } from './components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './components/ui/select';
+import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from './components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from './components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from './components/ui/dropdown-menu';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from './components/ui/collapsible';
@@ -258,7 +258,12 @@ function Studio() {
           setBusy(true); void stop().then(() => { setTarget(value); setMessage(''); if (current?.address && current.address !== value) setSelected(documents.find(d => !d.address || d.address === value)?.id ?? ''); }).catch(error => setMessage(String(error))).finally(() => setBusy(false));
         }}>
           <SelectTrigger aria-label="Device" className="device-select"><SelectValue /></SelectTrigger>
-          <SelectContent><SelectItem value="simulator"><Monitor />Simulator</SelectItem>{devices.map(d => <SelectItem key={d.address} value={d.address}><Radio />{d.name}</SelectItem>)}<SelectItem value="enter-ip">Enter IP...</SelectItem></SelectContent>
+          <SelectContent>
+            <SelectItem value="simulator"><Monitor />Simulator</SelectItem>
+            {devices.map(d => <SelectItem key={d.address} value={d.address} textValue={d.name}><Radio />{d.name}<span className="device-ip text-xs text-muted-foreground">{new URL(d.address).hostname}</span></SelectItem>)}
+            <SelectSeparator />
+            <SelectItem value="enter-ip">Enter IP...</SelectItem>
+          </SelectContent>
         </Select>
         <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon-sm" aria-label="Refresh devices" disabled={discovering} onClick={() => void discover()}><RefreshCw className={discovering ? 'animate-spin' : ''} /></Button></TooltipTrigger><TooltipContent>Refresh devices</TooltipContent></Tooltip>
         <span className="toolbar-divider" />
