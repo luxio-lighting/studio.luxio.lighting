@@ -9,7 +9,7 @@ npm run build
 npm run dev
 ```
 
-Select a discovered device or **Enter IP...** to connect directly. **Test** runs the current script in the simulator and, when selected, on the device. Device tests use a temporary script; Stop removes it without overwriting a saved animation. Reloading the same tab cleans up an interrupted test. **Save** saves to the selected device, or this browser when Simulator is selected. Local drafts recover automatically. Double-click a filename to rename it; its menu also offers duplicate, download, and delete. Cmd/Ctrl+S saves, and Cmd/Ctrl+Enter starts or stops a test.
+Select a discovered device or **Enter IP...** to connect directly. **Test** runs the current script in the simulator and, when selected, on the device. Device tests use a temporary script; Stop removes it without overwriting a saved animation. Reloading the same tab cleans up an interrupted test. **Save** saves to the selected device, or this browser when Simulator is selected. Local drafts recover automatically. Double-click a filename to rename it; Enter or leaving the field saves immediately, and Escape cancels. The file menu also offers duplicate, download, and delete. Cmd/Ctrl+S saves, and Cmd/Ctrl+Enter starts or stops a test.
 
 Gradient scripts keep their firmware mode: the simulator runs `setup()` once without calling `loop()`. The simulator renders at full brightness. Device playback uses the device’s current brightness.
 

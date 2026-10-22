@@ -71,8 +71,8 @@ test('Enter IP, paginated device scripts, safe Test, and gradient Save', async (
   await page.getByRole('menuitem', { name: 'Rename', exact: true }).click();
   await page.getByRole('textbox', { name: 'Animation name' }).fill('Evening');
   await page.getByRole('textbox', { name: 'Animation name' }).press('Enter');
-  await page.getByRole('button', { name: 'Save', exact: true }).click();
   await expect(page.getByRole('status')).toHaveText('Saved to device');
+  expect(calls.filter(c => c.operation === 8)).toHaveLength(1);
   expect(calls.find(c => c.operation === 8)?.script).toMatchObject({ id: gradient.id, mode: 1, name: 'Evening', source: gradient.source });
   await expect(page.locator('.error-message')).toHaveCount(0);
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('luxio-studio-workspace')!).find((d: any) => d.name === 'Aurora').source)).toBe(original);
@@ -111,7 +111,6 @@ test('discovery and failed device save keep the edited document', async ({ page 
   await page.getByRole('menuitem', { name: 'Rename', exact: true }).click();
   await page.getByRole('textbox', { name: 'Animation name' }).fill('Keep this draft');
   await page.getByRole('textbox', { name: 'Animation name' }).press('Enter');
-  await page.getByRole('button', { name: 'Save', exact: true }).click();
   await expect(page.locator('.error-message')).toContainText('Script storage is full');
   const draft = await page.evaluate(() => JSON.parse(localStorage.getItem('luxio-studio-workspace')!).find((d: any) => d.name === 'Keep this draft'));
   expect(draft.savedName).toBe('Aurora');
@@ -137,4 +136,86 @@ test('an already removed preview does not block manual connection', async ({ pag
   await expect(page.locator('.error-message')).toHaveCount(0);
   expect(await page.evaluate(() => sessionStorage.getItem('luxio-studio-preview'))).toBeNull();
   expect(calls.filter(call => call.operation === 9)).toHaveLength(1);
+});
+
+test('right-click actions apply to the clicked file and deletion requires confirmation', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Open Ember.lua', exact: true }).click({ button: 'right' });
+  await expect(page.locator('.editor-tab')).toContainText('Ember.lua');
+  await expect(page.getByRole('menuitem')).toHaveText(['Rename', 'Duplicate', 'Download .lua', 'Delete']);
+  await page.getByRole('menuitem', { name: 'Duplicate', exact: true }).hover();
+  await expect(page.getByRole('menuitem', { name: 'Duplicate', exact: true })).toHaveCSS('background-color', 'rgb(64, 64, 64)');
+  await page.screenshot({ path: '.sdk/studio-context-menu.png' });
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('menu')).toBeHidden();
+  await page.getByRole('button', { name: 'Open Ember.lua', exact: true }).click({ button: 'right' });
+  await page.getByRole('menuitem', { name: 'Rename', exact: true }).click();
+  await page.getByRole('textbox', { name: 'Animation name' }).fill('Warm');
+  await page.getByRole('textbox', { name: 'Animation name' }).press('Enter');
+  await page.getByRole('button', { name: 'Open Warm.lua', exact: true }).click({ button: 'right' });
+  await page.getByRole('menuitem', { name: 'Duplicate', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Open Warm copy.lua', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Open Warm.lua', exact: true }).click({ button: 'right' });
+  const download = page.waitForEvent('download');
+  await page.getByRole('menuitem', { name: 'Download .lua', exact: true }).click();
+  expect((await download).suggestedFilename()).toBe('Warm.lua');
+  await page.getByRole('button', { name: 'Open Warm copy.lua', exact: true }).click({ button: 'right' });
+  await page.getByRole('menuitem', { name: 'Delete', exact: true }).click();
+  await expect(page.getByRole('dialog')).toContainText('Delete Warm copy.lua?');
+  await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Open Warm copy.lua', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Open Warm copy.lua', exact: true }).click({ button: 'right' });
+  await page.getByRole('menuitem', { name: 'Delete', exact: true }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Delete', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Open Warm copy.lua', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Open Warm.lua', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Open Aurora.lua', exact: true })).toBeVisible();
+});
+
+test('rename saves on blur, survives reload, and Escape cancels without saving', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Open Aurora.lua', exact: true }).dblclick();
+  await page.getByRole('textbox', { name: 'Animation name' }).fill('  Northern lights  ');
+  await page.locator('.pane-heading').click();
+  await expect(page.getByRole('button', { name: 'Open Northern lights.lua', exact: true })).toBeVisible();
+  await expect(page.getByRole('status')).toHaveText('Saved in this browser');
+  await expect(page.getByRole('button', { name: 'Open Northern lights.lua', exact: true }).getByLabel('Unsaved changes')).toHaveCount(0);
+  await page.reload();
+  await page.getByRole('button', { name: 'Open Northern lights.lua', exact: true }).dblclick();
+  await page.getByRole('textbox', { name: 'Animation name' }).fill('Cancelled');
+  await page.getByRole('textbox', { name: 'Animation name' }).press('Escape');
+  await expect(page.getByRole('button', { name: 'Open Northern lights.lua', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Open Cancelled.lua', exact: true })).toHaveCount(0);
+  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('luxio-studio-workspace')!).find((d: any) => d.name === 'Northern lights'));
+  expect(saved.savedName).toBe('Northern lights');
+  expect(saved.savedSource).toBe(saved.source);
+});
+
+test('renaming an unloaded device file waits for its source before saving', async ({ page }) => {
+  const script: Script = { id: '11111111-1111-4111-8111-111111111111', name: 'Sea', mode: 1, source: 'function setup()\n  luxio_set_pixel_color(0, 0, 0, 255)\nend' };
+  const updates: ReturnType<typeof decodeRequest>[] = [];
+  let releaseSource!: () => void;
+  const sourceReady = new Promise<void>(resolve => { releaseSource = resolve; });
+  await page.route('https://api.luxio.lighting/devices', route => route.fulfill({ json: [{ name: 'Desk', lan_ip: '192.168.1.50' }] }));
+  await page.route('http://192.168.1.50/api', async route => {
+    const request = decodeRequest(route.request().postDataBuffer()!);
+    const response: any = { id: request.id };
+    if (request.operation === 5) response.scripts = [{ ...script, source: '' }];
+    if (request.operation === 6) { await sourceReady; response.script = script; }
+    if (request.operation === 8) { updates.push(request); response.script = request.script; }
+    await route.fulfill({ contentType: 'application/x-protobuf', body: Buffer.from(encodeResponse(response)) });
+  });
+  await page.goto('/');
+  await page.getByRole('combobox', { name: 'Device', exact: true }).click();
+  await page.getByRole('option', { name: /Desk/ }).click();
+  await page.getByRole('button', { name: 'Open Sea.lua', exact: true }).click({ button: 'right' });
+  await page.getByRole('menuitem', { name: 'Rename', exact: true }).click();
+  await page.getByRole('textbox', { name: 'Animation name' }).fill('Deep sea');
+  await page.getByRole('textbox', { name: 'Animation name' }).press('Enter');
+  expect(updates).toHaveLength(0);
+  releaseSource();
+  await expect(page.getByRole('status')).toHaveText('Saved to device');
+  expect(updates).toHaveLength(1);
+  expect(updates[0].script).toMatchObject({ ...script, name: 'Deep sea' });
+  await expect(page.locator('.error-message')).toHaveCount(0);
 });

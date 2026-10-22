@@ -10,6 +10,7 @@ import { Input } from './components/ui/input';
 import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from './components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from './components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from './components/ui/dropdown-menu';
+import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger } from './components/ui/context-menu';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from './components/ui/collapsible';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from './components/ui/resizable';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './components/ui/tooltip';
@@ -217,22 +218,27 @@ function Studio() {
     finally { setBusy(false); }
   }
 
-  async function save() {
-    if (busy || !current || current.source === null) return;
+  async function save(doc = current) {
+    if (busy || !doc) return;
     setBusy(true); setMessage(''); setNotice('');
     try {
-      const name = current.name.trim();
-      const source = monaco.editor.getModel(monaco.Uri.parse(`${current.id}.lua`))?.getValue() ?? current.source;
+      const name = doc.name.trim();
+      let source = doc.source === null ? null : monaco.editor.getModel(monaco.Uri.parse(`${doc.id}.lua`))?.getValue() ?? doc.source;
       if (!name || new TextEncoder().encode(name).length > 63) throw new Error('Use a name of 1–63 bytes.');
+      if (source === null && doc.address && doc.scriptId) {
+        const result = await requestHttp(doc.address, { id: nextId++, operation: 6, scriptId: doc.scriptId });
+        if (!result.script) throw new Error('Device did not return the script');
+        source = result.script.source;
+      }
       if (!source || new TextEncoder().encode(source).length > 16384) throw new Error('Scripts must contain 1–16,384 bytes.');
-      let scriptId = current.scriptId;
+      let scriptId = doc.scriptId;
       if (target !== 'simulator') {
-        const existing = current.address === target ? current.scriptId : undefined;
-        const result = await requestHttp(target, { id: nextId++, operation: existing ? 8 : 7, script: { id: existing ?? crypto.randomUUID(), name, source, mode: current.mode } });
+        const existing = doc.address === target ? doc.scriptId : undefined;
+        const result = await requestHttp(target, { id: nextId++, operation: existing ? 8 : 7, script: { id: existing ?? crypto.randomUUID(), name, source, mode: doc.mode } });
         if (!result.script?.id) throw new Error('Device did not return a script ID');
         scriptId = result.script.id;
-      } else localStorage.setItem('luxio-studio-workspace', JSON.stringify(documents.map(d => d.id === current.id ? { ...d, name, source, savedName: name, savedSource: source } : d)));
-      setDocuments(previous => previous.map(d => d.id === current.id ? { ...d, name, source, savedName: name, savedSource: source, ...(target !== 'simulator' ? { address: target, scriptId } : {}) } : d));
+      } else localStorage.setItem('luxio-studio-workspace', JSON.stringify(documents.map(d => d.id === doc.id ? { ...d, name, source, savedName: name, savedSource: source } : d)));
+      setDocuments(previous => previous.map(d => d.id === doc.id ? { ...d, name, source, savedName: name, savedSource: source, ...(target !== 'simulator' ? { address: target, scriptId } : {}) } : d));
       setNotice(target === 'simulator' ? 'Saved in this browser' : 'Saved to device');
     } catch (error) { setMessage(String(error)); }
     finally { setBusy(false); }
@@ -278,15 +284,25 @@ function Studio() {
           setDocuments(previous => [...previous, { id, name, source: 'function setup()\nend\n\nfunction loop()\n  for i = 0, luxio_get_pixel_count() - 1 do\n    luxio_set_pixel_color(i, 0, 210, 255)\n  end\nend\n', mode: 2, savedName: '', savedSource: '' }]); setSelected(id); setRename(id);
         }}><Plus /></Button></div>
         <div className="file-list" aria-label="Animations">
-          {visible.map(doc => <div key={doc.id} className={`file-row ${selected === doc.id ? 'selected' : ''}`}>
-            <button className="file-select" aria-label={`Open ${doc.name}.lua`} disabled={busy} onClick={() => { setSelected(doc.id); setMessage(''); setNotice(''); }} onDoubleClick={() => setRename(doc.id)}><FileCode2 /><span className="file-title">{rename === doc.id ? <input autoFocus disabled={busy} aria-label="Animation name" value={doc.name} onClick={e => e.stopPropagation()} onFocus={e => e.target.select()} onChange={e => setDocuments(previous => previous.map(d => d.id === doc.id ? { ...d, name: e.target.value } : d))} onBlur={() => setRename(null)} onKeyDown={e => { if (e.key === 'Enter' || e.key === 'Escape') { e.preventDefault(); setRename(null); } e.stopPropagation(); }} /> : <span>{doc.name}</span>}<small>.lua</small></span>{(doc.name !== doc.savedName || doc.source !== doc.savedSource) && <span className="dirty-dot" aria-label="Unsaved changes" />}</button>
+          {visible.map(doc => <ContextMenu key={doc.id} onOpenChange={open => { if (open) setSelected(doc.id); }}><ContextMenuTrigger asChild disabled={busy}><div className={`file-row ${selected === doc.id ? 'selected' : ''}`}>
+            <button className="file-select" aria-label={`Open ${doc.name}.lua`} disabled={busy} onClick={() => { setSelected(doc.id); setMessage(''); setNotice(''); }} onDoubleClick={() => setRename(doc.id)}><FileCode2 /><span className="file-title">{rename === doc.id ? <input autoFocus disabled={busy} aria-label="Animation name" defaultValue={doc.name} onClick={e => e.stopPropagation()} onFocus={e => e.target.select()} onBlur={e => {
+              const name = e.currentTarget.value.trim(); setRename(null);
+              if (name === doc.name) return;
+              setDocuments(previous => previous.map(d => d.id === doc.id ? { ...d, name } : d));
+              void save({ ...doc, name });
+            }} onKeyDown={e => { if (e.key === 'Enter' || e.key === 'Escape') { e.preventDefault(); if (e.key === 'Escape') e.currentTarget.value = doc.name; e.currentTarget.blur(); } e.stopPropagation(); }} /> : <span>{doc.name}</span>}<small>.lua</small></span>{(doc.name !== doc.savedName || doc.source !== doc.savedSource) && <span className="dirty-dot" aria-label="Unsaved changes" />}</button>
             <DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon-xs" className="file-menu" aria-label={`Actions for ${doc.name}`} disabled={busy}><MoreHorizontal /></Button></DropdownMenuTrigger><DropdownMenuContent align="start">
               <DropdownMenuItem onSelect={() => { setSelected(doc.id); setRename(doc.id); }}>Rename</DropdownMenuItem>
               <DropdownMenuItem disabled={doc.source === null} onSelect={() => { const id = crypto.randomUUID(); setDocuments(previous => [...previous, { ...doc, id, name: `${doc.name} copy`, address: undefined, scriptId: undefined, savedName: '', savedSource: '' }]); setSelected(id); }}>Duplicate</DropdownMenuItem>
               <DropdownMenuItem disabled={doc.source === null} onSelect={() => { const url = URL.createObjectURL(new Blob([doc.source!], { type: 'text/plain' })); const link = document.createElement('a'); link.href = url; link.download = `${doc.name.replace(/[/\\]/g, '-') || 'animation'}.lua`; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); }}>Download .lua</DropdownMenuItem>
               <DropdownMenuSeparator /><DropdownMenuItem variant="destructive" onSelect={() => setDeleteId(doc.id)}>Delete</DropdownMenuItem>
             </DropdownMenuContent></DropdownMenu>
-          </div>)}
+          </div></ContextMenuTrigger><ContextMenuContent>
+            <ContextMenuItem disabled={busy} onSelect={() => { setSelected(doc.id); setRename(doc.id); }}>Rename</ContextMenuItem>
+            <ContextMenuItem disabled={busy || doc.source === null} onSelect={() => { const id = crypto.randomUUID(); setDocuments(previous => [...previous, { ...doc, id, name: `${doc.name} copy`, address: undefined, scriptId: undefined, savedName: '', savedSource: '' }]); setSelected(id); }}>Duplicate</ContextMenuItem>
+            <ContextMenuItem disabled={busy || doc.source === null} onSelect={() => { const url = URL.createObjectURL(new Blob([doc.source!], { type: 'text/plain' })); const link = document.createElement('a'); link.href = url; link.download = `${doc.name.replace(/[/\\]/g, '-') || 'animation'}.lua`; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); }}>Download .lua</ContextMenuItem>
+            <ContextMenuSeparator /><ContextMenuItem variant="destructive" disabled={busy} onSelect={() => setDeleteId(doc.id)}>Delete</ContextMenuItem>
+          </ContextMenuContent></ContextMenu>)}
           {loading && <div className="sidebar-status"><LoaderCircle className="animate-spin" />Loading scripts…</div>}
         </div>
         <div className="sidebar-footer"><span className="connection-dot" />{target === 'simulator' ? 'Local workspace' : devices.find(d => d.address === target)?.name ?? 'Device'}</div>
