@@ -17,14 +17,22 @@
       "node",
       "w3c-web-serial"
     ],
-    "noEmit": true
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "baseUrl": ".",
+    "paths": {
+      "@/*": [
+        "./*"
+      ]
+    }
   },
   "include": [
     "src/**/*.ts",
     "shared/**/*.ts",
     "tools/**/*.ts",
     "tests/**/*.ts",
-    "*.ts"
+    "*.ts",
+    "**/*.tsx"
   ],
   "exclude": [
     "node_modules",

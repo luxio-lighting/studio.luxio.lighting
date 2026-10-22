@@ -7,7 +7,7 @@ self.onmessage = event => {
   try {
     animation = new Animation(event.data.source, event.data.count, event.data.stripType);
     timer = setInterval(() => {
-      try { self.postMessage({ pixels: animation!.tick() }); }
+      try { self.postMessage({ pixels: event.data.mode === 1 ? animation!.pixels : animation!.tick() }); }
       catch (error) { clearInterval(timer); animation?.close(); self.postMessage({ error: String(error) }); }
     }, 33);
     self.postMessage({ ready: true });

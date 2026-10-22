@@ -1,6 +1,6 @@
 # Luxio Studio
 
-Standalone static site. All required protocol, browser and simulator sources are included under `shared/`; no other Luxio checkout is needed.
+A compact Lua workspace built with React, shadcn components, and Monaco. All protocol and simulator sources are included under `shared/`; no other Luxio checkout is needed.
 
 ```sh
 npm ci
@@ -9,4 +9,19 @@ npm run build
 npm run dev
 ```
 
-Production output is `dist/`. CI builds this repository alone. Shared source snapshots are updated explicitly. Installed command launchers are ordinary files, not symlinks.
+Select a discovered device or **Enter IP...** to connect directly. **Test** runs the current script in the simulator and, when selected, on the device. Device tests use a temporary script; Stop removes it without overwriting a saved animation. Reloading the same tab cleans up an interrupted test. **Save** saves to the selected device, or this browser when Simulator is selected. Local drafts recover automatically. Double-click a filename to rename it; its menu also offers duplicate, download, and delete. Cmd/Ctrl+S saves, and Cmd/Ctrl+Enter starts or stops a test.
+
+Gradient scripts keep their firmware mode: the simulator runs `setup()` once without calling `loop()`. The simulator renders at full brightness. Device playback uses the device’s current brightness.
+
+Direct device requests remain subject to the browser’s local-network permissions and mixed-content policy. Discovery uses the public Luxio API; device control stays on the local network.
+
+## Browser checks
+
+```sh
+PLAYWRIGHT_BROWSERS_PATH="$PWD/.sdk/playwright" npx playwright install chromium
+PLAYWRIGHT_BROWSERS_PATH="$PWD/.sdk/playwright" npm test
+```
+
+Alternatively, set `CHROME_PATH` to a local Chrome executable. Tests start their own development server on port 5174; set `STUDIO_TEST_URL` to use another running server. Tests cover editing and recovery, simulator execution and errors, manual IP connection, discovery, device pagination, temporary tests, gradient mode, failed saves, and a narrow viewport.
+
+Production output is `dist/`. Monaco, its worker, and the Lua runtime are bundled locally. CI builds and tests this repository alone. Shared snapshots are updated explicitly. Installed command launchers are ordinary files, not symlinks.
