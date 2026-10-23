@@ -225,7 +225,7 @@ test('renaming an unloaded device file waits for its source before saving', asyn
   await expect(page.locator('.error-message')).toHaveCount(0);
 });
 
-test('documentation opens a static page and examples run on every strip type', async ({ page }) => {
+test('documentation tracks the current section and examples run on every strip type', async ({ page }) => {
   const { Animation } = await import('../shared/device/src/lua');
   await page.goto('/');
   const link = page.getByRole('link', { name: 'Documentation', exact: true });
@@ -237,7 +237,25 @@ test('documentation opens a static page and examples run on every strip type', a
   await expect(docs).toHaveURL(/\/docs\.html$/);
   await expect(docs).toHaveTitle('Animation documentation · Luxio Studio');
   await expect(docs.getByRole('heading', { name: 'Animation API', exact: true })).toBeVisible();
-  await expect(docs.locator('script')).toHaveCount(0);
+  const currentSection = docs.locator('nav a[aria-current="location"]');
+  await expect(currentSection).toHaveText('Quick start');
+  await docs.getByRole('link', { name: 'Parameters', exact: true }).click();
+  await expect(currentSection).toHaveText('Parameters');
+  await docs.evaluate(() => document.getElementById('examples')!.scrollIntoView());
+  await expect(currentSection).toHaveText('Examples');
+  await docs.evaluate(() => document.getElementById('api')!.scrollIntoView());
+  await expect(currentSection).toHaveText('Animation API');
+  await docs.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+  await expect(currentSection).toHaveText('Limits & troubleshooting');
+  await docs.goto('/docs.html#channels');
+  await expect(currentSection).toHaveText('Strip channels');
+  await docs.setViewportSize({ width: 390, height: 844 });
+  await expect(currentSection).toHaveText('Strip channels');
+  await docs.evaluate(() => document.getElementById('preview')!.scrollIntoView());
+  await expect(currentSection).toHaveText('Preview');
+  await docs.setViewportSize({ width: 1280, height: 850 });
+  await docs.evaluate(() => window.scrollTo(0, 0));
+  await expect(currentSection).toHaveText('Quick start');
   const examples = await docs.locator('code[data-example]').allTextContents();
   expect(examples).toHaveLength(4);
   for (const source of examples) for (const strip of ['WS2812', 'WS2814', 'WS2805']) for (const count of [1, 60]) {

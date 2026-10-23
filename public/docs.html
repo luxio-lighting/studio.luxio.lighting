@@ -28,6 +28,7 @@
     nav strong { color: #737373; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; padding: 0 12px 10px; }
     nav a { padding: 5px 12px; color: #a3a3a3; border-radius: 5px; text-decoration: none; }
     nav a:hover { color: #fafafa; background: #262626; }
+    nav a[aria-current="location"] { color: var(--luxio-mint); background: #2eecb610; box-shadow: inset 2px 0 var(--luxio-mint); }
     main { min-width: 0; max-width: 790px; }
     .eyebrow { color: var(--luxio-mint); font-size: 12px; font-weight: 600; margin: 0 0 8px; }
     h1, h2, h3 { color: #fafafa; line-height: 1.3; letter-spacing: -.025em; }
@@ -290,5 +291,36 @@ luxio --device 192.168.1.231 animations</code></pre>
       <footer>Luxio Studio · Animation API</footer>
     </main>
   </div>
+  <script>
+    const links = [...document.querySelectorAll('nav a[href^="#"]')];
+    const sections = links.map(link => document.getElementById(link.hash.slice(1)));
+    let pending = false;
+
+    function updateCurrentSection() {
+      pending = false;
+      let current = 0;
+      for (let index = 0; index < sections.length; index++) {
+        if (sections[index].getBoundingClientRect().top <= 96) current = index;
+      }
+      if (window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 2) {
+        current = sections.length - 1;
+      }
+      links.forEach((link, index) => {
+        if (index === current) link.setAttribute('aria-current', 'location');
+        else link.removeAttribute('aria-current');
+      });
+    }
+
+    window.addEventListener('scroll', () => {
+      if (!pending) {
+        pending = true;
+        requestAnimationFrame(updateCurrentSection);
+      }
+    }, { passive: true });
+    window.addEventListener('resize', updateCurrentSection);
+    window.addEventListener('pageshow', updateCurrentSection);
+    window.addEventListener('hashchange', updateCurrentSection);
+    updateCurrentSection();
+  </script>
 </body>
 </html>
