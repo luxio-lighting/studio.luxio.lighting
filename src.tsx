@@ -4,7 +4,7 @@ import Editor, { loader } from '@monaco-editor/react';
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api.js';
 import 'monaco-editor/esm/vs/basic-languages/lua/lua.contribution';
 import EditorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker';
-import { Play, Square, Plus, ChevronDown, ChevronRight, FileCode2, Monitor, RefreshCw, Save, MoreHorizontal, PanelLeft, X, Check, LoaderCircle, Radio } from 'lucide-react';
+import { Play, Square, Plus, ChevronDown, ChevronRight, FileCode2, Monitor, RefreshCw, Save, MoreHorizontal, PanelLeft, X, Check, LoaderCircle, Radio, ExternalLink } from 'lucide-react';
 import { Button } from './components/ui/button';
 import { Input } from './components/ui/input';
 import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from './components/ui/select';
@@ -349,6 +349,7 @@ function Studio() {
     <header className="toolbar">
       <div className="brand"><img className="brand-mark" src="/luxio-jellyfish.png" alt="" width={32} height={32} /><strong>Luxio <span>Studio</span></strong></div>
       <div className="toolbar-controls">
+        <a className="documentation-link" href="/docs.html" target="_blank" rel="noopener noreferrer" aria-label="Documentation" title="Documentation"><span>Documentation</span><ExternalLink aria-hidden="true" /></a>
         <Select value={target} disabled={busy} onValueChange={value => {
           const isChrome = /\b(?:Chrome|Chromium|HeadlessChrome)\//.test(navigator.userAgent) && !/\b(?:Edg|EdgA|OPR|SamsungBrowser)\//.test(navigator.userAgent) && !/\bwv\b/.test(navigator.userAgent);
           if (value !== 'simulator' && !isChrome && !devicePromptSeen) { setDevicePrompt(value); return; }
@@ -430,7 +431,7 @@ function Studio() {
             <label className="count-control"><Input aria-label="LED count" type="number" min={1} max={1024} value={count} disabled={running || target !== 'simulator'} onChange={e => setCount(Math.min(1024, Math.max(1, Number(e.target.value) || 1)))} /><span>LEDs</span></label>
           </div><canvas ref={canvas} className="strip-canvas" aria-label="Simulated LED strip" /></CollapsibleContent>
         </Collapsible>
-        <footer className="statusbar"><span role="status">{busy ? <><LoaderCircle className="animate-spin" />Working…</> : notice ? <><Check />{notice}</> : <><span className="connection-dot" />{target === 'simulator' ? 'Simulator' : new URL(target).host}</>}</span><span>Ln {position.lineNumber}, Col {position.column}<span className="status-separator">UTF-8</span><span>Lua</span></span><a className="documentation-link" href="/docs.html" target="_blank" rel="noopener noreferrer">Documentation</a></footer>
+        <footer className="statusbar"><span role="status">{busy ? <><LoaderCircle className="animate-spin" />Working…</> : notice ? <><Check />{notice}</> : <><span className="connection-dot" />{target === 'simulator' ? 'Simulator' : new URL(target).host}</>}</span><span>Ln {position.lineNumber}, Col {position.column}<span className="status-separator">UTF-8</span><span>Lua</span></span></footer>
       </section></ResizablePanel>
     </ResizablePanelGroup></main>
     <Dialog open={devicePrompt !== null} onOpenChange={open => { if (!open) setDevicePrompt(null); }}><DialogContent className="device-browser-dialog">
