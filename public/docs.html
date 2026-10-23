@@ -40,6 +40,11 @@
     code, pre { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace; font-size: 12px; }
     :not(pre) > code { color: #e5e5e5; background: #262626; padding: 2px 5px; border-radius: 4px; overflow-wrap: anywhere; }
     pre { background: #1a1a1a; border: 1px solid #303030; border-radius: 8px; padding: 20px; overflow-x: auto; line-height: 1.75; tab-size: 2; }
+    pre .lua-comment { color: #89ad78; }
+    pre .lua-keyword { color: #c586c0; }
+    pre .lua-string { color: #ce9178; }
+    pre .lua-number { color: #b5cea8; }
+    pre .lua-function { color: #dcdcaa; }
     .note { border-left: 2px solid var(--luxio-mint); padding: 6px 16px; background: #191c1b; color: #d4d4d4; margin-top: 20px; }
     .table { overflow-x: auto; border: 1px solid #303030; border-radius: 8px; margin: 20px 0; }
     table { width: 100%; border-collapse: collapse; font-size: 13px; text-align: left; }
@@ -92,31 +97,31 @@
           <li>Paste this example into the editor and select <strong>Test</strong>.</li>
           <li>To use the real strip, copy your code, choose your device, add an animation with <strong>+</strong>, and paste it. Select <strong>Test</strong> to preview it, then <strong>Save</strong> to keep it on the device.</li>
         </ol>
-        <pre><code data-example="breathe">-- @preview 00d2ff,4fff7f
--- @parameter Flicker,Checkbox,true
--- @parameter Speed,Slider,50,0,100
+        <pre><code class="language-lua" data-example="breathe"><span class="lua-comment">-- @preview 00d2ff,4fff7f</span>
+<span class="lua-comment">-- @parameter Flicker,Checkbox,true</span>
+<span class="lua-comment">-- @parameter Speed,Slider,50,0,100</span>
 
--- A cyan glow, with live speed and flicker controls.
-local count = 0
+<span class="lua-comment">-- A cyan glow, with live speed and flicker controls.</span>
+<span class="lua-keyword">local</span> count = <span class="lua-number">0</span>
 
-function setup()
-  count = luxio_get_pixel_count()
-end
+<span class="lua-keyword">function</span> <span class="lua-function">setup</span>()
+  count = <span class="lua-function">luxio_get_pixel_count</span>()
+<span class="lua-keyword">end</span>
 
-function loop()
-  local seconds = luxio_millis() / 1000
-  local speed = luxio_get_parameter("Speed") / 50
-  local level = 1
-  if luxio_get_parameter("Flicker") then
-    level = (math.sin(seconds * speed * 2 * math.pi / 4) + 1) / 2
-  end
-  local green = math.floor(210 * level)
-  local blue = math.floor(255 * level)
+<span class="lua-keyword">function</span> <span class="lua-function">loop</span>()
+  <span class="lua-keyword">local</span> seconds = <span class="lua-function">luxio_millis</span>() / <span class="lua-number">1000</span>
+  <span class="lua-keyword">local</span> speed = <span class="lua-function">luxio_get_parameter</span>(<span class="lua-string">"Speed"</span>) / <span class="lua-number">50</span>
+  <span class="lua-keyword">local</span> level = <span class="lua-number">1</span>
+  <span class="lua-keyword">if</span> <span class="lua-function">luxio_get_parameter</span>(<span class="lua-string">"Flicker"</span>) <span class="lua-keyword">then</span>
+    level = (math.<span class="lua-function">sin</span>(seconds * speed * <span class="lua-number">2</span> * math.pi / <span class="lua-number">4</span>) + <span class="lua-number">1</span>) / <span class="lua-number">2</span>
+  <span class="lua-keyword">end</span>
+  <span class="lua-keyword">local</span> green = math.<span class="lua-function">floor</span>(<span class="lua-number">210</span> * level)
+  <span class="lua-keyword">local</span> blue = math.<span class="lua-function">floor</span>(<span class="lua-number">255</span> * level)
 
-  for i = 0, count - 1 do
-    luxio_set_pixel_color(i, 0, green, blue)
-  end
-end</code></pre>
+  <span class="lua-keyword">for</span> i = <span class="lua-number">0</span>, count - <span class="lua-number">1</span> <span class="lua-keyword">do</span>
+    <span class="lua-function">luxio_set_pixel_color</span>(i, <span class="lua-number">0</span>, green, blue)
+  <span class="lua-keyword">end</span>
+<span class="lua-keyword">end</span></code></pre>
         <p class="muted">This example works on all supported strip types, including a single addressable LED/controller.</p>
       </section>
       <section id="lifecycle">
@@ -133,35 +138,35 @@ end</code></pre>
         <p>Returns elapsed time in milliseconds since this animation started. Divide by <code>1000</code> for seconds. It resets on every start.</p>
         <h3><code>luxio_set_pixel_color(index, red, green, blue, white, warm_white, cool_white)</code></h3>
         <p>Sets one pixel’s channels. All channel values must be integers from <strong>0 to 255</strong>; omitted channels default to zero. Use <code>math.floor()</code> when calculating values. Unsupported channels must be zero.</p>
-        <pre><code>-- RGB: cyan at pixel zero.
-luxio_set_pixel_color(0, 0, 210, 255)
+        <pre><code class="language-lua"><span class="lua-comment">-- RGB: cyan at pixel zero.</span>
+<span class="lua-function">luxio_set_pixel_color</span>(<span class="lua-number">0</span>, <span class="lua-number">0</span>, <span class="lua-number">210</span>, <span class="lua-number">255</span>)
 
--- RGBW only: the dedicated white channel.
-luxio_set_pixel_color(0, 0, 0, 0, 255)
+<span class="lua-comment">-- RGBW only: the dedicated white channel.</span>
+<span class="lua-function">luxio_set_pixel_color</span>(<span class="lua-number">0</span>, <span class="lua-number">0</span>, <span class="lua-number">0</span>, <span class="lua-number">0</span>, <span class="lua-number">255</span>)
 
--- RGBCCT only: a mix of warm and cool white.
-luxio_set_pixel_color(0, 0, 0, 0, 0, 160, 95)</code></pre>
+<span class="lua-comment">-- RGBCCT only: a mix of warm and cool white.</span>
+<span class="lua-function">luxio_set_pixel_color</span>(<span class="lua-number">0</span>, <span class="lua-number">0</span>, <span class="lua-number">0</span>, <span class="lua-number">0</span>, <span class="lua-number">0</span>, <span class="lua-number">160</span>, <span class="lua-number">95</span>)</code></pre>
         <h3><code>luxio_get_parameter(name)</code></h3>
         <p>Returns the current Boolean or Number value of a declared parameter. Names are case-sensitive. Read it inside <code>loop()</code> to pick up live changes. Reading it in <code>setup()</code> captures only the starting value. An unknown name raises an error.</p>
         <p>Luxio displays the frame automatically. There is no <code>show()</code> or delay call. Channel intensity is separate from device brightness, which Luxio applies to the final output.</p>
       </section>
       <section id="preview">
         <h2>Animation preview</h2>
-        <pre><code>-- @preview ff460c,d21400,ffc823
--- @parameter Speed,Slider,50,0,100
-function loop()
-  -- Render the animation here.
-end</code></pre>
+        <pre><code class="language-lua"><span class="lua-comment">-- @preview ff460c,d21400,ffc823</span>
+<span class="lua-comment">-- @parameter Speed,Slider,50,0,100</span>
+<span class="lua-keyword">function</span> <span class="lua-function">loop</span>()
+  <span class="lua-comment">-- Render the animation here.</span>
+<span class="lua-keyword">end</span></code></pre>
         <p>Put one optional <code>@preview</code> in the leading Lua comments. Supply two to eight comma-separated RGB hex colors, in gradient order. Six digits are required; an optional <code>#</code>, mixed case and whitespace are accepted. Duplicate, malformed or misplaced previews are rejected.</p>
         <p>This palette is a visual hint for the iOS device header, home card and saved-animation swatch. It does not set LED colors or change playback. Missing previews use a neutral background. Firmware derives the palette from source on save or play; <code>Script.preview</code> is included in listings and <code>State.animationPreview</code> describes the playing animation, including RAM previews. Requires firmware build 19.</p>
       </section>
       <section id="parameters">
         <h2>Parameters</h2>
         <p>Declare controls in comments at the top of your animation, before any Lua code. Studio shows a checkbox for Checkbox values, a slider for Slider values, and a numeric input for Number values. Mobile clients show native controls while the animation is playing.</p>
-        <pre><code>-- @parameter Flicker,Checkbox,true
--- @parameter Speed,Slider,50,0,100
--- @parameter Spacing,Number,8,1,64
--- Name,Type,Default,Minimum,Maximum (range for Slider and Number)</code></pre>
+        <pre><code class="language-lua"><span class="lua-comment">-- @parameter Flicker,Checkbox,true</span>
+<span class="lua-comment">-- @parameter Speed,Slider,50,0,100</span>
+<span class="lua-comment">-- @parameter Spacing,Number,8,1,64</span>
+<span class="lua-comment">-- Name,Type,Default,Minimum,Maximum (range for Slider and Number)</span></code></pre>
         <div class="table"><table>
           <thead><tr><th scope="col">Type</th><th scope="col">Control</th><th scope="col">Lua value</th></tr></thead>
           <tbody>
@@ -174,7 +179,7 @@ end</code></pre>
         <p>Use up to 16 unique, case-sensitive names, each 1–32 ASCII characters. Start with a letter; letters, digits, spaces, and underscores are allowed. Checkbox defaults are <code>true</code> or <code>false</code>. Invalid declarations show an error and cannot be played or saved.</p>
         <p>Changes apply without restarting the animation or resetting its elapsed time. Live values stay in RAM. <strong>Save</strong> in Studio stores the values with the saved animation. On iOS, tap the sliders icon in the selected animation card to open its settings. Changes are remembered locally on your phone for each light and animation, and reapplied when you select it again. <strong>Reset to Defaults</strong> restores the values declared in the comments. On Android, <strong>Save parameters</strong> stores values with the saved animation.</p>
         <p>Editing declarations during a test requires stopping and testing again. Slider and Checkbox declarations require firmware build 21 or newer. Number uses a numeric input; the old Boolean spelling remains supported as an alias for Checkbox. In Studio, numeric inputs apply when you press Enter or leave the field. On iOS, press Done; on Android, press Done or the Apply button.</p>
-        <pre><code>luxio set-animation glow.lua --parameters '{"Speed":75,"Flicker":false}'
+        <pre><code class="language-shell">luxio set-animation glow.lua --parameters '{"Speed":75,"Flicker":false}'
 luxio set-parameters '{"Speed":25}'
 luxio set-parameters '{"Speed":25}' --save</code></pre>
         <p class="muted"><code>--save</code> requires a saved animation to be running. It preserves the values without restarting playback.</p>
@@ -196,32 +201,32 @@ luxio set-parameters '{"Speed":25}' --save</code></pre>
         <h2>More examples</h2>
         <h3>Traveling color wave</h3>
         <p>Three offset sine waves spread color along the strip. Changing <code>4000</code> changes the cycle duration in milliseconds.</p>
-        <pre><code data-example="wave">function loop()
-  local count = luxio_get_pixel_count()
-  local time = luxio_millis() / 4000
+        <pre><code class="language-lua" data-example="wave"><span class="lua-keyword">function</span> <span class="lua-function">loop</span>()
+  <span class="lua-keyword">local</span> count = <span class="lua-function">luxio_get_pixel_count</span>()
+  <span class="lua-keyword">local</span> time = <span class="lua-function">luxio_millis</span>() / <span class="lua-number">4000</span>
 
-  for i = 0, count - 1 do
-    local phase = (i / count - time) * 2 * math.pi
-    local red = math.floor(127.5 + 127.5 * math.sin(phase))
-    local green = math.floor(127.5 + 127.5 * math.sin(phase + 2 * math.pi / 3))
-    local blue = math.floor(127.5 + 127.5 * math.sin(phase + 4 * math.pi / 3))
-    luxio_set_pixel_color(i, red, green, blue)
-  end
-end</code></pre>
+  <span class="lua-keyword">for</span> i = <span class="lua-number">0</span>, count - <span class="lua-number">1</span> <span class="lua-keyword">do</span>
+    <span class="lua-keyword">local</span> phase = (i / count - time) * <span class="lua-number">2</span> * math.pi
+    <span class="lua-keyword">local</span> red = math.<span class="lua-function">floor</span>(<span class="lua-number">127.5</span> + <span class="lua-number">127.5</span> * math.<span class="lua-function">sin</span>(phase))
+    <span class="lua-keyword">local</span> green = math.<span class="lua-function">floor</span>(<span class="lua-number">127.5</span> + <span class="lua-number">127.5</span> * math.<span class="lua-function">sin</span>(phase + <span class="lua-number">2</span> * math.pi / <span class="lua-number">3</span>))
+    <span class="lua-keyword">local</span> blue = math.<span class="lua-function">floor</span>(<span class="lua-number">127.5</span> + <span class="lua-number">127.5</span> * math.<span class="lua-function">sin</span>(phase + <span class="lua-number">4</span> * math.pi / <span class="lua-number">3</span>))
+    <span class="lua-function">luxio_set_pixel_color</span>(i, red, green, blue)
+  <span class="lua-keyword">end</span>
+<span class="lua-keyword">end</span></code></pre>
         <h3>Moving dot</h3>
         <p>Moves one mint-colored pixel every 100 ms. Every other pixel is cleared on each frame.</p>
-        <pre><code data-example="dot">function loop()
-  local count = luxio_get_pixel_count()
-  local position = math.floor(luxio_millis() / 100) % count
+        <pre><code class="language-lua" data-example="dot"><span class="lua-keyword">function</span> <span class="lua-function">loop</span>()
+  <span class="lua-keyword">local</span> count = <span class="lua-function">luxio_get_pixel_count</span>()
+  <span class="lua-keyword">local</span> position = math.<span class="lua-function">floor</span>(<span class="lua-function">luxio_millis</span>() / <span class="lua-number">100</span>) % count
 
-  for i = 0, count - 1 do
-    if i == position then
-      luxio_set_pixel_color(i, 46, 236, 182)
-    else
-      luxio_set_pixel_color(i, 0, 0, 0)
-    end
-  end
-end</code></pre>
+  <span class="lua-keyword">for</span> i = <span class="lua-number">0</span>, count - <span class="lua-number">1</span> <span class="lua-keyword">do</span>
+    <span class="lua-keyword">if</span> i == position <span class="lua-keyword">then</span>
+      <span class="lua-function">luxio_set_pixel_color</span>(i, <span class="lua-number">46</span>, <span class="lua-number">236</span>, <span class="lua-number">182</span>)
+    <span class="lua-keyword">else</span>
+      <span class="lua-function">luxio_set_pixel_color</span>(i, <span class="lua-number">0</span>, <span class="lua-number">0</span>, <span class="lua-number">0</span>)
+    <span class="lua-keyword">end</span>
+  <span class="lua-keyword">end</span>
+<span class="lua-keyword">end</span></code></pre>
       </section>
       <section id="workflow">
         <h2>Test &amp; save</h2>
@@ -234,7 +239,7 @@ end</code></pre>
           <tbody><tr><td>Save</td><td>Cmd/Ctrl + S</td></tr><tr><td>Start or stop Test</td><td>Cmd/Ctrl + Enter</td></tr></tbody>
         </table></div>
         <h3>From the CLI</h3>
-        <pre><code>luxio --device 192.168.1.231 set-animation glow.lua
+        <pre><code class="language-shell">luxio --device 192.168.1.231 set-animation glow.lua
 luxio --device 192.168.1.231 save-animation glow.lua --name Glow
 luxio --device 192.168.1.231 animations</code></pre>
         <p class="muted">Replace the IP with your device’s address. <code>set-animation</code> plays from RAM; <code>save-animation</code> stores it for later.</p>
