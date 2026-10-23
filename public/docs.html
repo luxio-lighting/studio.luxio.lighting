@@ -134,6 +134,8 @@
         <h2>Animation API</h2>
         <h3><code>luxio_get_pixel_count()</code></h3>
         <p>Returns the configured number of addressable LEDs/controllers. Indices start at <strong>0</strong> and end at <code>count - 1</code>. One controller may drive a group of physical LEDs.</p>
+        <h3><code>luxio_get_color_type()</code></h3>
+        <p>Returns <code>"RGB"</code>, <code>"RGBW"</code>, or <code>"RGBCCT"</code> for the configured strip. Use it to choose which channels to write. Available at the top level, in <code>setup()</code>, and in <code>loop()</code>, from firmware build 22. It reads the strip configuration; it does not detect the connected hardware.</p>
         <h3><code>luxio_millis()</code></h3>
         <p>Returns elapsed time in milliseconds since this animation started. Divide by <code>1000</code> for seconds. It resets on every start.</p>
         <h3><code>luxio_set_pixel_color(index, red, green, blue, white, warm_white, cool_white)</code></h3>
@@ -194,11 +196,31 @@ luxio set-parameters '{"Speed":25}' --save</code></pre>
             <tr><td>WS2805 · RGBCCT</td><td>Red, green, blue, warm white, cool white</td><td>Mix warm and cool; leave <code>white</code> at zero</td></tr>
           </tbody>
         </table></div>
-        <p>RGB-only animations work on all three types. The API does not expose strip-type detection, so write white-channel animations for a specific strip and choose the matching simulator setting.</p>
+        <p>RGB-only animations work on all three types. Use <code>luxio_get_color_type()</code> to adapt white-channel animations to the configured strip. Choose the matching simulator setting to preview each output type.</p>
         <p>Saved colors, gradients, and animations are separate libraries. Use a native gradient for a still blend; clients offer gradients only when the device has more than one LED/controller.</p>
       </section>
       <section id="examples">
         <h2>More examples</h2>
+        <h3>Adapt to the strip's white channels</h3>
+        <p>This example uses the dedicated warm-white channel on RGBCCT strips, the dedicated white channel on RGBW strips, and a warm RGB mix otherwise. Guarding the function call also keeps it usable on older firmware.</p>
+        <pre><code class="language-lua" data-example="adaptive-white"><span class="lua-comment">-- Use RGB when running on firmware older than build 22.</span>
+<span class="lua-keyword">local</span> color_type = luxio_get_color_type <span class="lua-keyword">and</span> <span class="lua-function">luxio_get_color_type</span>() <span class="lua-keyword">or</span> <span class="lua-string">"RGB"</span>
+
+<span class="lua-keyword">function</span> <span class="lua-function">loop</span>()
+  <span class="lua-keyword">for</span> i = <span class="lua-number">0</span>, <span class="lua-function">luxio_get_pixel_count</span>() - <span class="lua-number">1</span> <span class="lua-keyword">do</span>
+    <span class="lua-keyword">if</span> color_type == <span class="lua-string">"RGBCCT"</span> <span class="lua-keyword">then</span>
+      <span class="lua-comment">-- Dedicated warm-white channel; cool white stays off.</span>
+      <span class="lua-function">luxio_set_pixel_color</span>(i, <span class="lua-number">0</span>, <span class="lua-number">0</span>, <span class="lua-number">0</span>, <span class="lua-number">0</span>, <span class="lua-number">255</span>, <span class="lua-number">0</span>)
+    <span class="lua-keyword">elseif</span> color_type == <span class="lua-string">"RGBW"</span> <span class="lua-keyword">then</span>
+      <span class="lua-comment">-- The dedicated white channel's color depends on the strip.</span>
+      <span class="lua-function">luxio_set_pixel_color</span>(i, <span class="lua-number">0</span>, <span class="lua-number">0</span>, <span class="lua-number">0</span>, <span class="lua-number">255</span>)
+    <span class="lua-keyword">else</span>
+      <span class="lua-comment">-- Approximate warm white using red, green, and blue.</span>
+      <span class="lua-function">luxio_set_pixel_color</span>(i, <span class="lua-number">255</span>, <span class="lua-number">190</span>, <span class="lua-number">105</span>)
+    <span class="lua-keyword">end</span>
+  <span class="lua-keyword">end</span>
+<span class="lua-keyword">end</span></code></pre>
+
         <h3>Traveling color wave</h3>
         <p>Three offset sine waves spread color along the strip. Changing <code>4000</code> changes the cycle duration in milliseconds.</p>
         <pre><code class="language-lua" data-example="wave"><span class="lua-keyword">function</span> <span class="lua-function">loop</span>()

@@ -239,7 +239,7 @@ test('documentation opens a static page and examples run on every strip type', a
   await expect(docs.getByRole('heading', { name: 'Animation API', exact: true })).toBeVisible();
   await expect(docs.locator('script')).toHaveCount(0);
   const examples = await docs.locator('code[data-example]').allTextContents();
-  expect(examples).toHaveLength(3);
+  expect(examples).toHaveLength(4);
   for (const source of examples) for (const strip of ['WS2812', 'WS2814', 'WS2805']) for (const count of [1, 60]) {
     const animation = new Animation(source, count, strip);
     try {
