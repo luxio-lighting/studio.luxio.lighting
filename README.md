@@ -13,7 +13,7 @@ Select a discovered device or **Enter IP...** to connect directly. **Test** runs
 
 Gradient scripts keep their firmware mode: the simulator runs `setup()` once without calling `loop()`. The simulator renders at full brightness. Device playback uses the device’s current brightness.
 
-Direct device requests remain subject to the browser’s local-network permissions and mixed-content policy. Discovery uses the public Luxio API; device control stays on the local network.
+Studio redirects HTTPS visits to HTTP in JavaScript so it can connect to HTTP LAN devices. The redirect preserves the path, query, and fragment. Direct device requests remain subject to the browser’s local-network permissions. Discovery uses the public Luxio API; device control stays on the local network. Browser storage is separate for HTTP and HTTPS, so drafts previously saved on HTTPS do not appear in the HTTP workspace.
 
 ## Browser checks
 
@@ -30,4 +30,4 @@ Production output is `dist/`. Monaco, its worker, and the Lua runtime are bundle
 
 GitHub Actions deploys `main` to GitHub Pages after type checking, building, and browser tests pass. Pull requests and other branches run checks without deploying. The workflow can also be run manually on `main`.
 
-In repository Settings → Pages, select **GitHub Actions** as the source and set the custom domain to **studio.luxio.lighting**. Point that domain's DNS CNAME to **luxio-lighting.github.io** and enable HTTPS once GitHub provisions the certificate. Vite uses the root base path for this custom domain; `public/CNAME` is included in the build output.
+In repository Settings → Pages, select **GitHub Actions** as the source and set the custom domain to **studio.luxio.lighting**. Point that domain's DNS CNAME to **luxio-lighting.github.io** and leave **Enforce HTTPS** disabled to avoid a redirect loop with Studio’s JavaScript redirect. Vite uses the root base path for this custom domain; `public/CNAME` is included in the build output.
