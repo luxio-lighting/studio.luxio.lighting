@@ -98,6 +98,6 @@ export const presets = [
       "#ff00a0",
       "#00dcff"
     ],
-    "source": "-- @preview 0f0032,ff00a0,00dcff\n-- Cyan and magenta neon bands drifting through deep violet.\nfunction loop()\n  local t = luxio_millis() / 1000\n  local count = luxio_get_pixel_count()\n  local sin, floor, max = math.sin, math.floor, math.max\n  for i = 0, count - 1 do\n    local x = i / count\n    local cyan = max(0, sin(x * 18.85 - t * 1.8)) ^ 6\n    local pink = max(0, sin(x * 12.57 + t * 1.3 + 2)) ^ 6\n    local shimmer = 0.85 + 0.15 * sin(t * 8 + i * 1.7)\n    luxio_set_pixel_color(i, floor((12 + 243 * pink) * shimmer), floor(220 * cyan * shimmer), floor((35 + 130 * pink + 90 * cyan) * shimmer))\n  end\nend"
+    "source": "-- @preview 0f0032,ff00a0,00dcff\n-- Cyan and magenta neon bands drifting through deep violet.\nfunction loop()\n  local t = luxio_millis() / 1000\n  local count = luxio_get_pixel_count()\n  local sin, floor, max = math.sin, math.floor, math.max\n  for i = 0, count - 1 do\n    local x = i / count\n    local cyan = max(0, sin(x * 18.85 - t * 1.8)) ^ 6\n    local pink = max(0, sin(x * 12.57 + t * 1.3 + 2)) ^ 6\n    local shimmer = 0.85 + 0.15 * sin(t * 8 + i * 1.7)\n    luxio_set_pixel_color(i, floor((12 + 243 * pink) * shimmer), floor(220 * cyan * shimmer), floor(math.min(255, 35 + 130 * pink + 220 * cyan) * shimmer))\n  end\nend"
   }
 ];
