@@ -28,6 +28,6 @@ Production output is `dist/`. Monaco, its worker, and the Lua runtime are bundle
 
 ## Deployment
 
-GitHub Actions deploys `main` to GitHub Pages after type checking, building, and browser tests pass. Pull requests and other branches run checks without deploying. The workflow can also be run manually on `main`.
+GitHub Actions deploys `main` to GitHub Pages after type checking and building pass. Browser tests run locally with `npm test`. Pull requests and other branches run checks without deploying. The workflow can also be run manually on `main`.
 
 In repository Settings → Pages, select **GitHub Actions** as the source and set the custom domain to **studio.luxio.lighting**. Point that domain's DNS CNAME to **luxio-lighting.github.io** and enable **Enforce HTTPS**. Vite uses the root base path for this custom domain; `public/CNAME` is included in the build output.
