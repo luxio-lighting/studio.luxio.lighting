@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { decodeRequest, encodeResponse } from '../shared/protocol/src/index';
 
-test('device guidance precedes network access, supports cancel, and appears once per page session', async ({ page }) => {
+test('device guidance precedes network access, supports dismissal, and appears once per page session', async ({ page }) => {
   const calls: number[] = [];
   await page.route('https://api.luxio.lighting/devices', route => route.fulfill({ json: [{ name: 'Desk', lan_ip: '192.168.1.50' }] }));
   await page.route('http://192.168.1.50/api', async route => {
@@ -18,14 +18,14 @@ test('device guidance precedes network access, supports cancel, and appears once
   await expect(dialog).toContainText('same local network');
   expect(calls).toEqual([]);
   await page.screenshot({ path: '.sdk/device-browser-desktop.png', animations: 'disabled' });
-  await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await page.getByRole('button', { name: 'Close', exact: true }).click();
   await expect(dialog).toBeHidden();
   await expect(page.getByRole('combobox', { name: 'Device', exact: true })).toContainText('Simulator');
   expect(calls).toEqual([]);
 
   await page.getByRole('combobox', { name: 'Device', exact: true }).click();
   await page.getByRole('option', { name: /Desk/ }).click();
-  await page.getByRole('button', { name: 'Continue', exact: true }).click();
+  await page.getByRole('button', { name: 'Understood', exact: true }).click();
   await expect(dialog).toBeHidden();
   await expect.poll(() => calls).toContain(5);
   await page.getByRole('combobox', { name: 'Device', exact: true }).click();
@@ -52,7 +52,7 @@ test('manual connection shows readable guidance on narrow screens before the IP 
   expect(bounds!.y).toBeGreaterThanOrEqual(0);
   expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(844);
   await page.screenshot({ path: '.sdk/device-browser-mobile.png', animations: 'disabled' });
-  await page.getByRole('button', { name: 'Continue', exact: true }).click();
+  await page.getByRole('button', { name: 'Understood', exact: true }).click();
   await expect(page.getByRole('dialog', { name: 'Connect to device', exact: true })).toBeVisible();
   await expect(page.getByRole('textbox', { name: 'IP address' })).toBeFocused();
 });

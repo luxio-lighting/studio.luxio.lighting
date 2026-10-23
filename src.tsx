@@ -341,17 +341,16 @@ function Studio() {
       </section></ResizablePanel>
     </ResizablePanelGroup></main>
     <Dialog open={devicePrompt !== null} onOpenChange={open => { if (!open) setDevicePrompt(null); }}><DialogContent className="device-browser-dialog">
-      <div className="device-browser-heading"><span className="device-browser-icon"><Radio aria-hidden="true" /></span><span>YOUR LIGHTS, CONNECTED</span></div>
       <DialogHeader><DialogTitle>Connect with Google Chrome</DialogTitle><DialogDescription>For device control, open Studio in the latest Google Chrome on a computer or Android device.</DialogDescription></DialogHeader>
       <div className="device-browser-permission"><Check aria-hidden="true" /><div><strong>Allow local network access</strong><p>When Chrome asks, choose Allow. This lets Studio connect from this secure page to your lights on the same local network.</p></div></div>
       <p className="device-browser-note">Safari and other browsers may block these connections. You can still use the simulator without connecting a device.</p>
       <a className="device-browser-link" href="https://www.google.com/chrome/" target="_blank" rel="noopener noreferrer">Get Google Chrome <span aria-hidden="true">↗</span></a>
-      <DialogFooter><Button variant="ghost" onClick={() => setDevicePrompt(null)}>Cancel</Button><Button onClick={() => {
+      <DialogFooter><Button className="w-full" onClick={() => {
         const value = devicePrompt; if (!value) return;
         setDevicePromptSeen(true); setDevicePrompt(null);
         if (value === 'enter-ip') { setIpOpen(true); setIpError(''); return; }
         setBusy(true); void stop().then(() => { setTarget(value); setMessage(''); setSelected(''); }).catch(error => setMessage(String(error))).finally(() => setBusy(false));
-      }}>Continue</Button></DialogFooter>
+      }}>Understood</Button></DialogFooter>
     </DialogContent></Dialog>
     <Dialog open={ipOpen} onOpenChange={open => { if (!connecting) setIpOpen(open); }}><DialogContent className="ip-dialog"><DialogHeader><DialogTitle>Connect to device</DialogTitle><DialogDescription>Enter the device’s local IP address.</DialogDescription></DialogHeader>
       <form onSubmit={async event => {
