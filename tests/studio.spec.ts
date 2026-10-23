@@ -313,7 +313,7 @@ test('default animations declare valid previews and live controls', async () => 
   for (const preset of presets) {
     expect(parsePreview(preset.source)).toHaveLength(preset.colors.length);
     const parameters = parseParameters(preset.source);
-    expect(parameters).toHaveLength(3);
+    expect(parameters).toHaveLength(['Christmas', 'Knight Rider', 'Fireplace', 'Candle', 'Cyberpunk'].includes(preset.name) ? 0 : 3);
     for (const parameter of parameters) {
       const animation = new Animation(preset.source, 60, 'WS2805');
       const before = structuredClone(animation.tick(1000));
@@ -321,6 +321,22 @@ test('default animations declare valid previews and live controls', async () => 
       expect(animation.tick(0), `${preset.name}: ${parameter.name}`).not.toEqual(before);
       animation.close();
     }
+  }
+});
+
+test('automatic presets run without parameter controls', async ({ page }) => {
+  await page.goto('/');
+  for (const name of ['Christmas', 'Knight Rider', 'Fireplace', 'Candle', 'Cyberpunk']) {
+    await page.getByRole('button', { name: `Open ${name}.lua`, exact: true }).click();
+    await expect(page.getByRole('slider', { name: 'Speed', exact: true })).toHaveCount(0);
+    await page.getByRole('button', { name: 'Test', exact: true }).click();
+    await expect(page.getByText('Running', { exact: true })).toBeVisible();
+    await expect.poll(() => page.locator('canvas.strip-canvas').evaluate((el: HTMLCanvasElement) => {
+      const data = el.getContext('2d')!.getImageData(0, 0, el.width, el.height).data;
+      return data.some((v, i) => i % 4 !== 3 && v > 70);
+    })).toBe(true);
+    await expect(page.locator('.error-message')).toHaveCount(0);
+    await page.getByRole('button', { name: 'Stop test' }).click();
   }
 });
 
@@ -371,8 +387,31 @@ test('replaces the old Studio catalog with the mobile catalog without losing cus
   const documents = previousPresets.map(p => ({ id: p.name, name: p.name, source: p.source, savedSource: p.source, savedName: p.name, mode: 2 }));
   await page.addInitScript(documents => localStorage.setItem('luxio-studio-workspace', JSON.stringify(documents)), documents);
   await page.goto('/');
-  await expect(page.locator('.file-select')).toHaveCount(5);
-  expect(await page.locator('.file-select').allTextContents()).toEqual(['Rainbow.lua', 'Colorloop.lua', 'Aurora.lua', 'Ember.lua', 'Tidal.lua']);
+  await expect(page.locator('.file-select')).toHaveCount(presets.length);
+  expect(await page.locator('.file-select').allTextContents()).toEqual(presets.map(p => `${p.name}.lua`));
   const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('luxio-studio-workspace')!));
   expect(stored.map((d: any) => [d.name, d.source])).toEqual(presets.map(p => [p.name, p.source]));
+});
+
+test('adds new simulator presets once and preserves custom drafts', async ({ page }) => {
+  const { presets } = await import('../shared/web/presets');
+  await page.goto('/');
+  await page.evaluate(presets => {
+    const documents = presets.slice(0, 5).map(p => ({ id: p.name, name: p.name, source: p.source, savedSource: p.source, savedName: p.name, mode: 2 }));
+    documents.push({ id: 'custom', name: 'Cyberpunk', source: 'function loop() end', savedSource: 'function loop() end', savedName: 'Cyberpunk', mode: 2 });
+    localStorage.setItem('luxio-studio-workspace', JSON.stringify(documents));
+    localStorage.removeItem('luxio-studio-preset-names');
+  }, presets);
+  await page.reload();
+  await expect(page.locator('.file-select')).toHaveCount(presets.length);
+  await expect(page.getByRole('button', { name: 'Open Christmas.lua', exact: true })).toBeVisible();
+  const custom = await page.evaluate(() => JSON.parse(localStorage.getItem('luxio-studio-workspace')!).find((d: any) => d.id === 'custom'));
+  expect(custom.source).toBe('function loop() end');
+  await page.evaluate(() => {
+    const documents = JSON.parse(localStorage.getItem('luxio-studio-workspace')!).filter((d: any) => d.name !== 'Christmas');
+    localStorage.setItem('luxio-studio-workspace', JSON.stringify(documents));
+  });
+  await page.reload();
+  await expect(page.locator('.file-select')).toHaveCount(presets.length - 1);
+  await expect(page.getByRole('button', { name: 'Open Christmas.lua', exact: true })).toHaveCount(0);
 });

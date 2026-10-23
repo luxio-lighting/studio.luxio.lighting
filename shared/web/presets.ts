@@ -52,5 +52,52 @@ export const presets = [
       "#0f8cff"
     ],
     "source": "-- @preview 053159,0f8cff\n-- @parameter Speed,Slider,50,0,100\n-- @parameter Spacing,Number,8,1,64\n-- @parameter Pulse,Checkbox,true\nfunction setup() end\nfunction loop()\n  local phase = luxio_millis() / 1800 * luxio_get_parameter(\"Speed\") / 50\n  for i = 0, luxio_get_pixel_count() - 1 do\n    local t = luxio_get_parameter(\"Pulse\") and (0.35 + 0.65 * (math.sin(i / luxio_get_parameter(\"Spacing\") + phase) + 1) / 2) or 1\n    luxio_set_pixel_color(i, math.floor(15 * t), math.floor(140 * t), math.floor(255 * t))\n  end\nend"
+  },
+  {
+    "name": "Christmas",
+    "description": "Soft, independent warm-white Christmas twinkles",
+    "colors": [
+      "#55381b",
+      "#ffbe69"
+    ],
+    "source": "-- @preview 55381b,ffbe69\n-- Soft, independent warm-white twinkles over a steady glow.\nfunction loop()\n  local t = luxio_millis() / 1000\n  local sin, floor, max = math.sin, math.floor, math.max\n  for i = 0, luxio_get_pixel_count() - 1 do\n    local phase = (sin(i * 127.1 + 311.7) * 43758.5453) % 6.28318\n    local wave = max(0, sin(t * (0.8 + (i * 0.618034 % 1) * 1.2) + phase))\n    local glow = 0.16 + 0.84 * wave ^ 8\n    luxio_set_pixel_color(i, floor(255 * glow), floor(190 * glow), floor(105 * glow))\n  end\nend"
+  },
+  {
+    "name": "Knight Rider",
+    "description": "A red scanner sweeping back and forth with a fading tail",
+    "colors": [
+      "#230000",
+      "#ff0000"
+    ],
+    "source": "-- @preview 230000,ff0000\n-- A red scanner with a fading tail, sweeping out and back.\nfunction loop()\n  local count = luxio_get_pixel_count()\n  local phase = (luxio_millis() / 1300) % 2\n  local direction = phase < 1 and 1 or -1\n  local head = (phase < 1 and phase or 2 - phase) * (count - 1)\n  local tail = math.max(1, count * 0.1)\n  local floor, abs, max, exp = math.floor, math.abs, math.max, math.exp\n  for i = 0, count - 1 do\n    local distance = (head - i) * direction\n    local glow = max(0, 1 - abs(head - i) / 1.5)\n    if distance >= 0 then glow = max(glow, 0.7 * exp(-distance / tail)) end\n    if count == 1 then glow = 0.35 + 0.65 * (1 + math.cos(phase * math.pi)) / 2 end\n    luxio_set_pixel_color(i, floor(255 * glow), 0, 0)\n  end\nend"
+  },
+  {
+    "name": "Fireplace",
+    "description": "Glowing embers and dancing amber flames",
+    "colors": [
+      "#730c00",
+      "#ff5f0a",
+      "#ffaf23"
+    ],
+    "source": "-- @preview 730c00,ff5f0a,ffaf23\n-- Uneven pockets of glowing embers and dancing amber flames.\nfunction loop()\n  local t = luxio_millis() / 1000\n  local sin, floor = math.sin, math.floor\n  for i = 0, luxio_get_pixel_count() - 1 do\n    local heat = 0.5 + 0.22 * sin(t * 2.8 + i * 0.7)\n      + 0.12 * sin(t * 7.1 - i * 1.3) + 0.06 * sin(t * 13.3 + i * 2.1)\n    luxio_set_pixel_color(i, floor(120 + 135 * heat), floor(12 + 180 * heat ^ 3), floor(35 * heat ^ 8))\n  end\nend"
+  },
+  {
+    "name": "Candle",
+    "description": "A calm amber flame with gentle, natural flicker",
+    "colors": [
+      "#aa5016",
+      "#ffa537"
+    ],
+    "source": "-- @preview aa5016,ffa537\n-- A calm amber flame with gentle flicker and occasional soft dips.\nfunction loop()\n  local t = luxio_millis() / 1000\n  local sin, floor, max = math.sin, math.floor, math.max\n  local flame = 0.82 + 0.07 * sin(t * 3.1) + 0.05 * sin(t * 7.7)\n    + 0.03 * sin(t * 13.9) - 0.18 * max(0, sin(t * 0.73)) ^ 16\n  for i = 0, luxio_get_pixel_count() - 1 do\n    local glow = flame + 0.02 * sin(i * 2.4 + t * 5.3)\n    luxio_set_pixel_color(i, floor(255 * glow), floor(155 * glow), floor(48 * glow))\n  end\nend"
+  },
+  {
+    "name": "Cyberpunk",
+    "description": "Cyan and magenta neon bands drifting through deep violet",
+    "colors": [
+      "#0f0032",
+      "#ff00a0",
+      "#00dcff"
+    ],
+    "source": "-- @preview 0f0032,ff00a0,00dcff\n-- Cyan and magenta neon bands drifting through deep violet.\nfunction loop()\n  local t = luxio_millis() / 1000\n  local count = luxio_get_pixel_count()\n  local sin, floor, max = math.sin, math.floor, math.max\n  for i = 0, count - 1 do\n    local x = i / count\n    local cyan = max(0, sin(x * 18.85 - t * 1.8)) ^ 6\n    local pink = max(0, sin(x * 12.57 + t * 1.3 + 2)) ^ 6\n    local shimmer = 0.85 + 0.15 * sin(t * 8 + i * 1.7)\n    luxio_set_pixel_color(i, floor((12 + 243 * pink) * shimmer), floor(220 * cyan * shimmer), floor((35 + 130 * pink + 90 * cyan) * shimmer))\n  end\nend"
   }
 ];

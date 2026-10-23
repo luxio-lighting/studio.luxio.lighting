@@ -64,10 +64,25 @@ initial = initial.flatMap(document => {
   return preset ? [{ ...document, source: preset.source, savedSource: preset.source, parameters: [], savedParameters: [] }] : [];
 });
 if (upgradedPresets) {
-  initial = [...presets.filter(preset => !initial.some(document => !document.address && document.name === preset.name)).map(preset => ({
-    id: crypto.randomUUID(), name: preset.name, source: preset.source, savedSource: preset.source, savedName: preset.name, mode: 2,
-  })), ...initial];
+  initial = [...presets.flatMap(preset => {
+    const documents = initial.filter(document => !document.address && document.name === preset.name);
+    return documents.length ? documents : [{
+      id: crypto.randomUUID(), name: preset.name, source: preset.source, savedSource: preset.source, savedName: preset.name, mode: 2,
+    }];
+  }), ...initial.filter(document => document.address || !presets.some(preset => preset.name === document.name))];
 }
+
+// Add newly released presets once, without restoring presets the user deleted.
+try {
+  const stored = JSON.parse(localStorage.getItem('luxio-studio-preset-names') ?? 'null');
+  const known: string[] = Array.isArray(stored) && stored.every(name => typeof name === 'string')
+    ? stored : ['Rainbow', 'Colorloop', 'Aurora', 'Ember', 'Tidal'];
+  initial.push(...presets.filter(preset => !known.includes(preset.name)
+    && !initial.some(document => !document.address && document.name === preset.name)).map(preset => ({
+    id: crypto.randomUUID(), name: preset.name, source: preset.source, savedSource: preset.source, savedName: preset.name, mode: 2,
+  })));
+  localStorage.setItem('luxio-studio-preset-names', JSON.stringify(presets.map(preset => preset.name)));
+} catch { /* The current workspace remains usable when browser storage is unavailable. */ }
 
 function Studio() {
   const [documents, setDocuments] = useState(initial);
