@@ -18,7 +18,7 @@ import { presets } from './shared/web/presets';
 import { requestHttp, type Color } from './shared/protocol/src/index';
 import './styles.css';
 
-// randomUUID is restricted to secure contexts; Studio uses HTTP for LAN devices.
+// randomUUID is restricted to secure contexts; keep HTTP development usable.
 crypto.randomUUID ??= () => {
   const bytes = crypto.getRandomValues(new Uint8Array(16));
   bytes[6] = (bytes[6] & 0x0f) | 0x40;
@@ -61,6 +61,8 @@ function Studio() {
   const [message, setMessage] = useState('');
   const [notice, setNotice] = useState('');
   const [ipOpen, setIpOpen] = useState(false);
+  const [devicePrompt, setDevicePrompt] = useState<string | null>(null);
+  const [devicePromptSeen, setDevicePromptSeen] = useState(false);
   const [ip, setIp] = useState('');
   const [ipError, setIpError] = useState('');
   const [connecting, setConnecting] = useState(false);
@@ -269,6 +271,7 @@ function Studio() {
       <div className="brand"><img className="brand-mark" src="/luxio-jellyfish.png" alt="" width={32} height={32} /><strong>Luxio <span>Studio</span></strong></div>
       <div className="toolbar-controls">
         <Select value={target} disabled={busy} onValueChange={value => {
+          if (value !== 'simulator' && !devicePromptSeen) { setDevicePrompt(value); return; }
           if (value === 'enter-ip') { setIpOpen(true); setIpError(''); return; }
           setBusy(true); void stop().then(() => { setTarget(value); setMessage(''); if (current?.address && current.address !== value) setSelected(documents.find(d => !d.address || d.address === value)?.id ?? ''); }).catch(error => setMessage(String(error))).finally(() => setBusy(false));
         }}>
@@ -337,6 +340,19 @@ function Studio() {
         <footer className="statusbar"><span role="status">{busy ? <><LoaderCircle className="animate-spin" />Working…</> : notice ? <><Check />{notice}</> : <><span className="connection-dot" />{target === 'simulator' ? 'Simulator' : new URL(target).host}</>}</span><span>Ln {position.lineNumber}, Col {position.column}<span className="status-separator">UTF-8</span><span>Lua</span></span></footer>
       </section></ResizablePanel>
     </ResizablePanelGroup></main>
+    <Dialog open={devicePrompt !== null} onOpenChange={open => { if (!open) setDevicePrompt(null); }}><DialogContent className="device-browser-dialog">
+      <div className="device-browser-heading"><span className="device-browser-icon"><Radio aria-hidden="true" /></span><span>YOUR LIGHTS, CONNECTED</span></div>
+      <DialogHeader><DialogTitle>Connect with Google Chrome</DialogTitle><DialogDescription>For device control, open Studio in the latest Google Chrome on a computer or Android device.</DialogDescription></DialogHeader>
+      <div className="device-browser-permission"><Check aria-hidden="true" /><div><strong>Allow local network access</strong><p>When Chrome asks, choose Allow. This lets Studio connect from this secure page to your lights on the same local network.</p></div></div>
+      <p className="device-browser-note">Safari and other browsers may block these connections. You can still use the simulator without connecting a device.</p>
+      <a className="device-browser-link" href="https://www.google.com/chrome/" target="_blank" rel="noopener noreferrer">Get Google Chrome <span aria-hidden="true">↗</span></a>
+      <DialogFooter><Button variant="ghost" onClick={() => setDevicePrompt(null)}>Cancel</Button><Button onClick={() => {
+        const value = devicePrompt; if (!value) return;
+        setDevicePromptSeen(true); setDevicePrompt(null);
+        if (value === 'enter-ip') { setIpOpen(true); setIpError(''); return; }
+        setBusy(true); void stop().then(() => { setTarget(value); setMessage(''); setSelected(''); }).catch(error => setMessage(String(error))).finally(() => setBusy(false));
+      }}>Continue</Button></DialogFooter>
+    </DialogContent></Dialog>
     <Dialog open={ipOpen} onOpenChange={open => { if (!connecting) setIpOpen(open); }}><DialogContent className="ip-dialog"><DialogHeader><DialogTitle>Connect to device</DialogTitle><DialogDescription>Enter the device’s local IP address.</DialogDescription></DialogHeader>
       <form onSubmit={async event => {
         event.preventDefault(); setConnecting(true); setIpError('');

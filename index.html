@@ -2,19 +2,6 @@
 <html lang="en" class="dark">
   <head>
     <meta charset="UTF-8" />
-    <script>
-      if (location.protocol === 'https:') {
-        // Browsers may upgrade HTTP back to HTTPS. Never retry in this tab.
-        try {
-          if (!sessionStorage.getItem('luxio-studio-http-attempted')) {
-            sessionStorage.setItem('luxio-studio-http-attempted', '1');
-            location.replace(location.href.replace(/^https:/, 'http:'));
-          }
-        } catch {
-          // Without storage we cannot guard against a redirect loop.
-        }
-      }
-    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#171717" />
     <meta name="description" content="Write, test, and save Lua animations for your Luxio lights." />
