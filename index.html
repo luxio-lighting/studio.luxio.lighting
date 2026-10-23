@@ -4,7 +4,15 @@
     <meta charset="UTF-8" />
     <script>
       if (location.protocol === 'https:') {
-        location.replace(location.href.replace(/^https:/, 'http:'));
+        // Browsers may upgrade HTTP back to HTTPS. Never retry in this tab.
+        try {
+          if (!sessionStorage.getItem('luxio-studio-http-attempted')) {
+            sessionStorage.setItem('luxio-studio-http-attempted', '1');
+            location.replace(location.href.replace(/^https:/, 'http:'));
+          }
+        } catch {
+          // Without storage we cannot guard against a redirect loop.
+        }
       }
     </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />

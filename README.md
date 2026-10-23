@@ -13,7 +13,7 @@ Select a discovered device or **Enter IP...** to connect directly. **Test** runs
 
 Gradient scripts keep their firmware mode: the simulator runs `setup()` once without calling `loop()`. The simulator renders at full brightness. Device playback uses the device’s current brightness.
 
-Studio redirects HTTPS visits to HTTP in JavaScript so it can connect to HTTP LAN devices. The redirect preserves the path, query, and fragment. Direct device requests remain subject to the browser’s local-network permissions. Discovery uses the public Luxio API; device control stays on the local network. Browser storage is separate for HTTP and HTTPS, so drafts previously saved on HTTPS do not appear in the HTTP workspace.
+Studio attempts to redirect HTTPS visits to HTTP once per tab so it can connect to HTTP LAN devices. The redirect preserves the path, query, and fragment. If the browser upgrades back to HTTPS, Studio stays there instead of looping; HTTP device access may still be blocked. If session storage is unavailable, the automatic redirect is skipped. Direct device requests remain subject to the browser’s local-network permissions. Discovery uses the public Luxio API; device control stays on the local network. Browser storage is separate for HTTP and HTTPS, so drafts previously saved on HTTPS do not appear in the HTTP workspace.
 
 ## Browser checks
 
