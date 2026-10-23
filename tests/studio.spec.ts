@@ -54,7 +54,6 @@ test('Enter IP, paginated device scripts, safe Test, and gradient Save', async (
   await page.goto('/');
   await page.getByRole('combobox', { name: 'Device', exact: true }).click();
   await page.getByRole('option', { name: 'Enter IP...' }).click();
-  await page.getByRole('button', { name: 'Understood', exact: true }).click();
   await page.getByRole('textbox', { name: 'IP address' }).fill('192.168.1.231');
   await page.getByRole('button', { name: 'Connect', exact: true }).click();
   await expect(page.getByRole('combobox', { name: 'Device', exact: true })).toContainText('Desk strip');
@@ -108,7 +107,6 @@ test('discovery and failed device save keep the edited document', async ({ page 
   await page.goto('/');
   await page.getByRole('combobox', { name: 'Device', exact: true }).click();
   await page.getByRole('option', { name: /Desk/ }).click();
-  await page.getByRole('button', { name: 'Understood', exact: true }).click();
   await page.getByRole('button', { name: 'Actions for Aurora' }).click();
   await page.getByRole('menuitem', { name: 'Rename', exact: true }).click();
   await page.getByRole('textbox', { name: 'Animation name' }).fill('Keep this draft');
@@ -131,7 +129,6 @@ test('an already removed preview does not block manual connection', async ({ pag
   await page.goto('/');
   await page.getByRole('combobox', { name: 'Device', exact: true }).click();
   await page.getByRole('option', { name: 'Enter IP...' }).click();
-  await page.getByRole('button', { name: 'Understood', exact: true }).click();
   await page.getByRole('textbox', { name: 'IP address' }).fill('192.168.1.231');
   await page.getByRole('button', { name: 'Connect', exact: true }).click();
   await expect(page.getByRole('combobox', { name: 'Device', exact: true })).toContainText('Luxio S3 Mini');
@@ -211,7 +208,6 @@ test('renaming an unloaded device file waits for its source before saving', asyn
   await page.goto('/');
   await page.getByRole('combobox', { name: 'Device', exact: true }).click();
   await page.getByRole('option', { name: /Desk/ }).click();
-  await page.getByRole('button', { name: 'Understood', exact: true }).click();
   await page.getByRole('button', { name: 'Open Sea.lua', exact: true }).click({ button: 'right' });
   await page.getByRole('menuitem', { name: 'Rename', exact: true }).click();
   await page.getByRole('textbox', { name: 'Animation name' }).fill('Deep sea');

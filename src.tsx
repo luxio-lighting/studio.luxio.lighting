@@ -271,7 +271,8 @@ function Studio() {
       <div className="brand"><img className="brand-mark" src="/luxio-jellyfish.png" alt="" width={32} height={32} /><strong>Luxio <span>Studio</span></strong></div>
       <div className="toolbar-controls">
         <Select value={target} disabled={busy} onValueChange={value => {
-          if (value !== 'simulator' && !devicePromptSeen) { setDevicePrompt(value); return; }
+          const isChrome = /\b(?:Chrome|Chromium|HeadlessChrome)\//.test(navigator.userAgent) && !/\b(?:Edg|EdgA|OPR|SamsungBrowser)\//.test(navigator.userAgent) && !/\bwv\b/.test(navigator.userAgent);
+          if (value !== 'simulator' && !isChrome && !devicePromptSeen) { setDevicePrompt(value); return; }
           if (value === 'enter-ip') { setIpOpen(true); setIpError(''); return; }
           setBusy(true); void stop().then(() => { setTarget(value); setMessage(''); if (current?.address && current.address !== value) setSelected(documents.find(d => !d.address || d.address === value)?.id ?? ''); }).catch(error => setMessage(String(error))).finally(() => setBusy(false));
         }}>

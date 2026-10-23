@@ -13,7 +13,7 @@ Select a discovered device or **Enter IP...** to connect directly. **Test** runs
 
 Gradient scripts keep their firmware mode: the simulator runs `setup()` once without calling `loop()`. The simulator renders at full brightness. Device playback uses the device’s current brightness.
 
-Studio stays on HTTPS. Before the first device selection in each page session, a dialog recommends current Google Chrome on a computer or Android device and explains the Local Network Access permission. Chrome can connect to HTTP LAN devices from HTTPS after permission is granted; other browsers may block these requests. Discovery uses the public Luxio API; device control stays on the local network. The simulator needs no device connection.
+Studio stays on HTTPS. Outside desktop and Android Google Chrome, the first device selection in each page session shows a dialog recommending current Google Chrome on a computer or Android device and explains the Local Network Access permission. Chrome can connect to HTTP LAN devices from HTTPS after permission is granted; other browsers may block these requests. Discovery uses the public Luxio API; device control stays on the local network. The simulator needs no device connection.
 
 ## Browser checks
 
