@@ -125,6 +125,10 @@
 .statusbar { display: flex; align-items: center; justify-content: space-between; min-height: 27px; padding: 0 13px; background: #171717; border-top: 1px solid #303030; color: #a3a3a3; font-size: 10px; gap: 12px; }
 .statusbar > span { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
 .statusbar > span:first-child { overflow: hidden; text-overflow: ellipsis; }
+.statusbar > span:first-child { flex: 1; min-width: 0; }
+.documentation-link { flex-shrink: 0; color: #d4d4d4; text-decoration: none; }
+.documentation-link:hover { color: var(--luxio-blue); text-decoration: underline; }
+.documentation-link:focus-visible { outline: 2px solid var(--luxio-blue); outline-offset: 3px; border-radius: 2px; }
 .statusbar svg { width: 11px; height: 11px; color: var(--foreground); }
 .status-separator { margin-left: 12px; margin-right: 8px; }
 .error-message { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 14px; border-top: 1px solid #ff829433; background: #ff82940b; color: #ff9bab; font: 11px/1.6 Menlo, monospace; max-height: 120px; overflow: auto; }
@@ -143,6 +147,17 @@
   .simulation-settings { gap: 8px; padding: 12px 10px 0; flex-wrap: wrap; }
   .statusbar > span:nth-child(2) { display: none; }
 }
+
+.parameter-panel { flex-shrink: 0; max-height: 220px; overflow: auto; border-top: 1px solid var(--border); padding: 10px 16px; background: #171717; }
+.parameter-heading { display: flex; align-items: center; justify-content: space-between; min-height: 28px; color: #a3a3a3; font-size: 11px; font-weight: 600; }
+.parameter-control { display: flex; align-items: center; gap: 14px; min-height: 34px; font-size: 12px; }
+.parameter-control > span { min-width: 90px; max-width: 35%; overflow-wrap: anywhere; }
+.parameter-control input { accent-color: var(--luxio-blue); }
+.parameter-control input[type=range] { flex: 1; min-width: 0; }
+.parameter-control input[type=number] { margin-left: auto; width: 120px; height: 30px; font-variant-numeric: tabular-nums; }
+.parameter-control input[type=checkbox] { width: 16px; height: 16px; }
+.parameter-control output { min-width: 48px; text-align: right; color: #a3a3a3; font-variant-numeric: tabular-nums; }
+.parameter-error { font-size: 12px; color: #ff9bab; }
 
 .device-browser-dialog[data-slot=dialog-content] { width: min(460px, calc(100vw - 32px)); max-width: 460px; max-height: calc(100dvh - 32px); overflow-y: auto; padding: 28px; gap: 20px; border-color: #ffffff20; background: radial-gradient(ellipse at top left, #00d2ff0c, transparent 65%), #171717; box-shadow: 0 24px 80px #0009; }
 .device-browser-dialog [data-slot=dialog-header] { text-align: left; gap: 12px; }

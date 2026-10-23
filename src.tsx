@@ -15,7 +15,10 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from './component
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from './components/ui/resizable';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './components/ui/tooltip';
 import { presets } from './shared/web/presets';
+import { legacyPresets } from './shared/web/legacy-presets';
 import { requestHttp, type Color } from './shared/protocol/src/index';
+import { parsePreview } from './shared/protocol/src/preview';
+import { parseParameters, type AnimationParameter } from './shared/protocol/src/parameters';
 import './styles.css';
 
 // randomUUID is restricted to secure contexts; keep HTTP development usable.
@@ -35,7 +38,7 @@ monaco.editor.defineTheme('luxio', {
   colors: { 'editor.background': '#141414', 'editor.foreground': '#e5e5e5', 'editorLineNumber.foreground': '#737373', 'editorLineNumber.activeForeground': '#d4d4d4', 'editor.lineHighlightBackground': '#1f1f1f', 'editor.selectionBackground': '#ffffff26', 'editorCursor.foreground': '#fafafa', 'editorIndentGuide.background1': '#303030', 'editorWidget.background': '#262626' },
 });
 
-type Document = { id: string; name: string; source: string | null; mode: number; address?: string; scriptId?: string; savedName: string; savedSource: string | null };
+type Document = { id: string; name: string; source: string | null; mode: number; address?: string; scriptId?: string; savedName: string; savedSource: string | null; parameters?: AnimationParameter[]; savedParameters?: AnimationParameter[] };
 type Device = { address: string; name: string };
 let nextId = 1;
 let initial: Document[];
@@ -48,6 +51,14 @@ try {
     if (typeof draft?.source === 'string') initial.unshift({ id: crypto.randomUUID(), name: draft.name || 'Untitled', source: draft.source, mode: 2, savedName: draft.name || 'Untitled', savedSource: draft.source });
   }
 } catch { initial = presets.map(p => ({ id: crypto.randomUUID(), name: p.name, source: p.source, mode: 2, savedName: p.name, savedSource: p.source })); }
+
+// Refresh bundled examples only when their saved and working copies are untouched.
+initial = initial.map(document => {
+  if (document.address || document.parameters?.length || document.savedName !== document.name) return document;
+  const legacy = legacyPresets.find(preset => preset.name === document.name && preset.source === document.source && preset.source === document.savedSource);
+  const preset = legacy && presets.find(preset => preset.name === legacy.name);
+  return preset ? { ...document, source: preset.source, savedSource: preset.source } : document;
+});
 
 function Studio() {
   const [documents, setDocuments] = useState(initial);
@@ -78,15 +89,20 @@ function Studio() {
   const watchdog = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const pixels = useRef<Color[]>([]);
   const preview = useRef<{ address: string; id: string } | null>(null);
+  const playback = useRef<{ documentId: string; source: string } | null>(null);
+  const parameterUpdates = useRef<Promise<void>>(Promise.resolve());
   const cleanup = useRef<Promise<void> | null>(null);
   const actions = useRef({ save: () => {}, test: () => {} });
   const visible = documents.filter(d => target === 'simulator' ? !d.address : d.address === target);
   const current = visible.find(d => d.id === selected) ?? visible[0];
-  const dirty = current && (current.name !== current.savedName || current.source !== current.savedSource);
+  const dirty = current && (current.name !== current.savedName || current.source !== current.savedSource || JSON.stringify(current.parameters ?? []) !== JSON.stringify(current.savedParameters ?? []));
+  let parameters: AnimationParameter[] = [], parameterError = '';
+  try { parsePreview(current?.source ?? ''); parameters = parseParameters(current?.source ?? '', current?.parameters ?? []); }
+  catch (error) { parameterError = String(error); }
 
   useEffect(() => {
     try { localStorage.setItem('luxio-studio-workspace', JSON.stringify(documents)); }
-    catch { setMessage('Browser storage is full. Download your scripts to keep a copy.'); }
+    catch { setMessage('Browser storage is full. Download your animations to keep a copy.'); }
   }, [documents]);
 
   async function discover() {
@@ -112,7 +128,7 @@ function Studio() {
       const previous = JSON.parse(sessionStorage.getItem('luxio-studio-preview') ?? 'null');
       if (previous?.address && previous?.id) {
         preview.current = previous;
-        void stop().catch(error => setMessage(`Could not remove the previous test script: ${String(error)}`));
+        void stop().catch(error => setMessage(`Could not stop the previous test animation: ${String(error)}`));
       }
     } catch { /* No recoverable preview in this tab. */ }
     return () => { worker.current?.terminate(); clearTimeout(watchdog.current); };
@@ -130,15 +146,15 @@ function Studio() {
         // Keep edits to animations removed on the device as local simulator drafts.
         for (const doc of previous) {
           if (doc.address === target && doc.scriptId && !list.scripts.some(script => script.id === doc.scriptId)
-            && (doc.name !== doc.savedName || doc.source !== doc.savedSource)) {
+            && (doc.name !== doc.savedName || doc.source !== doc.savedSource || JSON.stringify(doc.parameters ?? []) !== JSON.stringify(doc.savedParameters ?? []))) {
             merged.push({ ...doc, address: undefined, scriptId: undefined });
           }
         }
         for (const script of list.scripts) {
           const index = merged.findIndex(d => d.address === target && d.scriptId === script.id);
           const found = merged[index];
-          if (!found) merged.push({ id: crypto.randomUUID(), address: target, scriptId: script.id, name: script.name, source: null, mode: script.mode === 1 ? 1 : 2, savedName: script.name, savedSource: null });
-          else if (found.name === found.savedName && found.source === found.savedSource) {
+          if (!found) merged.push({ id: crypto.randomUUID(), address: target, scriptId: script.id, name: script.name, source: null, mode: 2, savedName: script.name, savedSource: null });
+          else if (found.name === found.savedName && found.source === found.savedSource && JSON.stringify(found.parameters ?? []) === JSON.stringify(found.savedParameters ?? [])) {
             merged[index] = { ...found, name: script.name, savedName: script.name, source: null, savedSource: null };
           }
         }
@@ -153,8 +169,8 @@ function Studio() {
     if (!current?.address || !current.scriptId || current.source !== null) return;
     let cancelled = false;
     requestHttp(current.address, { id: nextId++, operation: 6, scriptId: current.scriptId }).then(result => {
-      if (!result.script) throw new Error('Device did not return the script');
-      if (!cancelled) setDocuments(previous => previous.map(d => d.id === current.id ? { ...d, source: result.script!.source, savedSource: result.script!.source } : d));
+      if (!result.script) throw new Error('Device did not return the animation');
+      if (!cancelled) setDocuments(previous => previous.map(d => d.id === current.id ? { ...d, source: result.script!.source, savedSource: result.script!.source, parameters: result.script!.parameters ?? [], savedParameters: result.script!.parameters ?? [] } : d));
     }).catch(error => { if (!cancelled) setMessage(String(error)); });
     return () => { cancelled = true; };
   }, [current?.id, current?.source]);
@@ -186,17 +202,32 @@ function Studio() {
     draw(); return () => cancelAnimationFrame(frame);
   }, [count, simulatorOpen]);
 
+  async function changeParameter(parameter: AnimationParameter, value: number) {
+    if (!current) return;
+    const values = parameters.map(p => p.name === parameter.name ? { ...p, value } : p);
+    setDocuments(previous => previous.map(d => d.id === current.id ? { ...d, parameters: values } : d));
+    setNotice('');
+    if (running && playback.current?.documentId === current.id && playback.current.source === current.source) {
+      worker.current?.postMessage({ parameters: values });
+      const active = preview.current;
+      if (active) {
+        parameterUpdates.current = parameterUpdates.current.then(async () => {
+          if (preview.current !== active) return;
+          await requestHttp(active.address, { id: nextId++, operation: 32, script: { id: '', name: active.id, source: '' }, parameters: values });
+        }).catch(error => setMessage(String(error)));
+        await parameterUpdates.current;
+      }
+    }
+  }
+
   async function stop() {
-    worker.current?.terminate(); worker.current = null; clearTimeout(watchdog.current); setRunning(false);
+    worker.current?.terminate(); worker.current = null; clearTimeout(watchdog.current); setRunning(false); playback.current = null;
+    await parameterUpdates.current;
     if (cleanup.current) { await cleanup.current; return; }
     if (preview.current) {
       const active = preview.current;
       const pending = (async () => {
-        // Only remove our temporary script. Another client may already have removed it.
-        try { await requestHttp(active.address, { id: nextId++, operation: 9, scriptId: active.id }); }
-        catch (error) {
-          if (!(error instanceof Error) || error.message !== 'Script not found') throw error;
-        }
+        await requestHttp(active.address, { id: nextId++, operation: 11, script: { id: '', name: active.id, source: '' } });
         if (preview.current === active) {
           preview.current = null;
           sessionStorage.removeItem('luxio-studio-preview');
@@ -215,14 +246,19 @@ function Studio() {
       const wasRunning = running;
       await stop();
       if (wasRunning) return;
-      if (!current?.source) throw new Error('Select a script to test.');
+      if (!current?.source) throw new Error('Select an animation to test.');
       const source = monaco.editor.getModel(monaco.Uri.parse(`${current.id}.lua`))?.getValue() ?? current.source;
+      parsePreview(source);
+      const values = parseParameters(source, current.parameters ?? []);
       if (target !== 'simulator') {
-        const result = await requestHttp(target, { id: nextId++, operation: 7, script: { id: crypto.randomUUID(), name: 'Studio preview', source, mode: current.mode } });
-        if (!result.script?.id) throw new Error('Device did not return a script ID');
-        preview.current = { address: target, id: result.script.id };
+        if (values.length) {
+          const requiredBuild = /^\s*-- @parameter [^,]+,\s*(Slider|Checkbox)\s*,/m.test(source) ? 21 : 14;
+          if (((await requestHttp(target, { id: nextId++, operation: 0 })).state?.build ?? 0) < requiredBuild) throw new Error(`These animation parameters require firmware build ${requiredBuild} or newer.`);
+        }
+        const name = `Studio preview ${crypto.randomUUID()}`;
+        await requestHttp(target, { id: nextId++, operation: 31, script: { id: '', name, source, mode: 2, parameters: values } });
+        preview.current = { address: target, id: name };
         sessionStorage.setItem('luxio-studio-preview', JSON.stringify(preview.current));
-        await requestHttp(target, { id: nextId++, operation: 10, scriptId: result.script.id });
       }
       worker.current = new Worker(new URL('./worker.ts', import.meta.url), { type: 'module' });
       const fail = (error: string) => { void stop().catch(e => setMessage(`${error}. ${String(e)}`)); setMessage(error); };
@@ -234,7 +270,8 @@ function Studio() {
         if (event.data.pixels) pixels.current = event.data.pixels;
       };
       worker.current.onerror = event => fail(event.message);
-      worker.current.postMessage({ source, count, stripType, mode: current.mode });
+      worker.current.postMessage({ source, count, stripType, mode: 2, parameters: values });
+      playback.current = { documentId: current.id, source };
       setRunning(true);
     } catch (error) { setMessage(String(error)); await stop().catch(() => {}); }
     finally { setBusy(false); }
@@ -245,22 +282,29 @@ function Studio() {
     setBusy(true); setMessage(''); setNotice('');
     try {
       const name = doc.name.trim();
+      let savedValues = doc.parameters ?? [];
       let source = doc.source === null ? null : monaco.editor.getModel(monaco.Uri.parse(`${doc.id}.lua`))?.getValue() ?? doc.source;
       if (!name || new TextEncoder().encode(name).length > 63) throw new Error('Use a name of 1–63 bytes.');
       if (source === null && doc.address && doc.scriptId) {
         const result = await requestHttp(doc.address, { id: nextId++, operation: 6, scriptId: doc.scriptId });
-        if (!result.script) throw new Error('Device did not return the script');
-        source = result.script.source;
+        if (!result.script) throw new Error('Device did not return the animation');
+        source = result.script.source; savedValues = result.script.parameters ?? [];
       }
-      if (!source || new TextEncoder().encode(source).length > 16384) throw new Error('Scripts must contain 1–16,384 bytes.');
+      if (!source || new TextEncoder().encode(source).length > 16384) throw new Error('Animations must contain 1–16,384 bytes.');
+      parsePreview(source);
+      const values = parseParameters(source, savedValues);
       let scriptId = doc.scriptId;
       if (target !== 'simulator') {
+        if (values.length) {
+          const requiredBuild = /^\s*-- @parameter [^,]+,\s*(Slider|Checkbox)\s*,/m.test(source) ? 21 : 14;
+          if (((await requestHttp(target, { id: nextId++, operation: 0 })).state?.build ?? 0) < requiredBuild) throw new Error(`These animation parameters require firmware build ${requiredBuild} or newer.`);
+        }
         const existing = doc.address === target ? doc.scriptId : undefined;
-        const result = await requestHttp(target, { id: nextId++, operation: existing ? 8 : 7, script: { id: existing ?? crypto.randomUUID(), name, source, mode: doc.mode } });
-        if (!result.script?.id) throw new Error('Device did not return a script ID');
+        const result = await requestHttp(target, { id: nextId++, operation: existing ? 8 : 7, script: { id: existing ?? crypto.randomUUID(), name, source, mode: 2, parameters: values } });
+        if (!result.script?.id) throw new Error('Device did not return an animation ID');
         scriptId = result.script.id;
-      } else localStorage.setItem('luxio-studio-workspace', JSON.stringify(documents.map(d => d.id === doc.id ? { ...d, name, source, savedName: name, savedSource: source } : d)));
-      setDocuments(previous => previous.map(d => d.id === doc.id ? { ...d, name, source, savedName: name, savedSource: source, ...(target !== 'simulator' ? { address: target, scriptId } : {}) } : d));
+      } else localStorage.setItem('luxio-studio-workspace', JSON.stringify(documents.map(d => d.id === doc.id ? { ...d, name, source, savedName: name, savedSource: source, parameters: values, savedParameters: values } : d)));
+      setDocuments(previous => previous.map(d => d.id === doc.id ? { ...d, name, source, savedName: name, savedSource: source, parameters: values, savedParameters: values, ...(target !== 'simulator' ? { address: target, scriptId } : {}) } : d));
       setNotice(target === 'simulator' ? 'Saved in this browser' : 'Saved to device');
     } catch (error) { setMessage(String(error)); }
     finally { setBusy(false); }
@@ -305,7 +349,7 @@ function Studio() {
       {sidebar && <><ResizablePanel defaultSize="230px" minSize="170px" maxSize="360px"><aside className="sidebar">
         <div className="pane-heading"><span>Animations</span><Button variant="ghost" size="icon-xs" aria-label="New animation" disabled={busy} onClick={() => {
           const id = crypto.randomUUID(); const name = 'Untitled';
-          setDocuments(previous => [...previous, { id, name, address: target === 'simulator' ? undefined : target, source: 'function setup()\nend\n\nfunction loop()\n  for i = 0, luxio_get_pixel_count() - 1 do\n    luxio_set_pixel_color(i, 0, 210, 255)\n  end\nend\n', mode: 2, savedName: '', savedSource: '' }]); setSelected(id); setRename(id);
+          setDocuments(previous => [...previous, { id, name, address: target === 'simulator' ? undefined : target, source: '-- @preview 00d2ff,4fff7f\nfunction setup()\nend\n\nfunction loop()\n  for i = 0, luxio_get_pixel_count() - 1 do\n    luxio_set_pixel_color(i, 0, 210, 255)\n  end\nend\n', mode: 2, savedName: '', savedSource: '' }]); setSelected(id); setRename(id);
         }}><Plus /></Button></div>
         <div className="file-list" aria-label="Animations">
           {visible.map(doc => <ContextMenu key={doc.id} onOpenChange={open => { if (open) setSelected(doc.id); }}><ContextMenuTrigger asChild disabled={busy}><div className={`file-row ${current?.id === doc.id ? 'selected' : ''}`}>
@@ -314,7 +358,7 @@ function Studio() {
               if (name === doc.name) return;
               setDocuments(previous => previous.map(d => d.id === doc.id ? { ...d, name } : d));
               void save({ ...doc, name });
-            }} onKeyDown={e => { if (e.key === 'Enter' || e.key === 'Escape') { e.preventDefault(); if (e.key === 'Escape') e.currentTarget.value = doc.name; e.currentTarget.blur(); } e.stopPropagation(); }} /> : <span>{doc.name}</span>}<small>.lua</small></span>{(doc.name !== doc.savedName || doc.source !== doc.savedSource) && <span className="dirty-dot" aria-label="Unsaved changes" />}</button>
+            }} onKeyDown={e => { if (e.key === 'Enter' || e.key === 'Escape') { e.preventDefault(); if (e.key === 'Escape') e.currentTarget.value = doc.name; e.currentTarget.blur(); } e.stopPropagation(); }} /> : <span>{doc.name}</span>}<small>.lua</small></span>{(doc.name !== doc.savedName || doc.source !== doc.savedSource || JSON.stringify(doc.parameters ?? []) !== JSON.stringify(doc.savedParameters ?? [])) && <span className="dirty-dot" aria-label="Unsaved changes" />}</button>
             <DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon-xs" className="file-menu" aria-label={`Actions for ${doc.name}`} disabled={busy}><MoreHorizontal /></Button></DropdownMenuTrigger><DropdownMenuContent align="start" onCloseAutoFocus={event => { if (rename) event.preventDefault(); }}>
               <DropdownMenuItem onSelect={() => { setSelected(doc.id); setRename(doc.id); }}>Rename</DropdownMenuItem>
               <DropdownMenuItem disabled={doc.source === null} onSelect={() => { const id = crypto.randomUUID(); setDocuments(previous => [...previous, { ...doc, id, name: `${doc.name} copy`, address: target === 'simulator' ? undefined : target, scriptId: undefined, savedName: '', savedSource: '' }]); setSelected(id); }}>Duplicate</DropdownMenuItem>
@@ -327,7 +371,7 @@ function Studio() {
             <ContextMenuItem disabled={busy || doc.source === null} onSelect={() => { const url = URL.createObjectURL(new Blob([doc.source!], { type: 'text/plain' })); const link = document.createElement('a'); link.href = url; link.download = `${doc.name.replace(/[/\\]/g, '-') || 'animation'}.lua`; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); }}>Download .lua</ContextMenuItem>
             <ContextMenuSeparator /><ContextMenuItem variant="destructive" disabled={busy} onSelect={() => setDeleteId(doc.id)}>Delete</ContextMenuItem>
           </ContextMenuContent></ContextMenu>)}
-          {loading && <div className="sidebar-status"><LoaderCircle className="animate-spin" />Loading scripts…</div>}
+          {loading && <div className="sidebar-status"><LoaderCircle className="animate-spin" />Loading animations…</div>}
         </div>
         <div className="sidebar-footer"><span className="connection-dot" />{target === 'simulator' ? 'Local workspace' : devices.find(d => d.address === target)?.name ?? 'Device'}</div>
       </aside></ResizablePanel><ResizableHandle /></>}
@@ -342,14 +386,27 @@ function Studio() {
           });
         }} options={{ readOnly: busy || current.source === null, fontSize: 13, fontFamily: '"SF Mono", Menlo, Monaco, monospace', lineHeight: 23, minimap: { enabled: false }, padding: { top: 18 }, scrollBeyondLastLine: false, smoothScrolling: true, tabSize: 2, automaticLayout: true, renderLineHighlight: 'all', overviewRulerLanes: 0, hideCursorInOverviewRuler: true, scrollbar: { verticalScrollbarSize: 8, horizontalScrollbarSize: 8 }, fixedOverflowWidgets: true }} /> : <div className="editor-empty"><FileCode2 /><p>Select an animation or create a new one.</p></div>}</div>
         {message && <div className="error-message" role="alert"><span>{message}</span><Button variant="ghost" size="icon-xs" aria-label="Dismiss error" onClick={() => setMessage('')}><X /></Button></div>}
-        <Collapsible open={simulatorOpen} onOpenChange={setSimulatorOpen} className="simulator">
+        {(parameters.length > 0 || parameterError) && <section className="parameter-panel" aria-label="Animation parameters">
+        <div className="parameter-heading"><span>Parameters</span>{current?.parameters?.length ? <Button variant="ghost" size="xs" disabled={busy || running} onClick={() => setDocuments(previous => previous.map(d => d.id === current?.id ? { ...d, parameters: [] } : d))}>Reset values</Button> : null}</div>
+        {parameterError ? <p className="parameter-error" role="alert">{parameterError}</p> : parameters.map(parameter => <label className="parameter-control" key={parameter.name}>
+          <span>{parameter.name}</span>
+          {parameter.boolean ? <input type="checkbox" checked={parameter.value !== 0} disabled={busy || (running && playback.current?.source !== current?.source)} onChange={event => void changeParameter(parameter, event.target.checked ? 1 : 0)} />  : parameter.numberInput ? <Input key={`${current?.id}-${parameter.name}-${parameter.value}`} type="number" min={parameter.minimum} max={parameter.maximum} step="any" defaultValue={parameter.value} disabled={busy || (running && playback.current?.source !== current?.source)} onBlur={event => {
+            const value = event.currentTarget.valueAsNumber;
+            if (!Number.isFinite(value) || value < parameter.minimum || value > parameter.maximum) {
+              event.currentTarget.value = String(parameter.value); setMessage(`${parameter.name} must be between ${parameter.minimum} and ${parameter.maximum}.`); return;
+            }
+            if (value !== parameter.value) void changeParameter(parameter, value);
+          }} onKeyDown={event => { if (event.key === 'Enter' || event.key === 'Escape') { if (event.key === 'Escape') event.currentTarget.value = String(parameter.value); event.currentTarget.blur(); } }} /> : <><input type="range" min={parameter.minimum} max={parameter.maximum} step="any" value={parameter.value} disabled={busy || (running && playback.current?.source !== current?.source)} onChange={event => void changeParameter(parameter, Number(event.target.value))} /><output>{Number(parameter.value.toFixed(2))}</output></>}
+        </label>)}
+      </section>}
+      <Collapsible open={simulatorOpen} onOpenChange={setSimulatorOpen} className="simulator">
           <div className="simulator-heading"><CollapsibleTrigger asChild><Button variant="ghost" size="sm" aria-label={simulatorOpen ? 'Collapse simulator' : 'Expand simulator'}>{simulatorOpen ? <ChevronDown /> : <ChevronRight />}<Monitor />Simulator</Button></CollapsibleTrigger><span className={`simulation-state ${running ? 'running' : ''}`}><span />{running ? 'Running' : 'Stopped'}</span></div>
           <CollapsibleContent><div className="simulation-settings">
             <Select value={stripType} disabled={running || target !== 'simulator'} onValueChange={setStripType}><SelectTrigger aria-label="Strip type"><SelectValue /></SelectTrigger><SelectContent>{['WS2805', 'WS2814', 'WS2812'].map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}</SelectContent></Select>
             <label className="count-control"><Input aria-label="LED count" type="number" min={1} max={1024} value={count} disabled={running || target !== 'simulator'} onChange={e => setCount(Math.min(1024, Math.max(1, Number(e.target.value) || 1)))} /><span>LEDs</span></label>
           </div><canvas ref={canvas} className="strip-canvas" aria-label="Simulated LED strip" /></CollapsibleContent>
         </Collapsible>
-        <footer className="statusbar"><span role="status">{busy ? <><LoaderCircle className="animate-spin" />Working…</> : notice ? <><Check />{notice}</> : <><span className="connection-dot" />{target === 'simulator' ? 'Simulator' : new URL(target).host}</>}</span><span>Ln {position.lineNumber}, Col {position.column}<span className="status-separator">UTF-8</span><span>Lua</span></span></footer>
+        <footer className="statusbar"><span role="status">{busy ? <><LoaderCircle className="animate-spin" />Working…</> : notice ? <><Check />{notice}</> : <><span className="connection-dot" />{target === 'simulator' ? 'Simulator' : new URL(target).host}</>}</span><span>Ln {position.lineNumber}, Col {position.column}<span className="status-separator">UTF-8</span><span>Lua</span></span><a className="documentation-link" href="/docs.html" target="_blank" rel="noopener noreferrer">Documentation</a></footer>
       </section></ResizablePanel>
     </ResizablePanelGroup></main>
     <Dialog open={devicePrompt !== null} onOpenChange={open => { if (!open) setDevicePrompt(null); }}><DialogContent className="device-browser-dialog">
@@ -382,7 +439,7 @@ function Studio() {
         finally { setConnecting(false); }
       }}><Input aria-label="IP address" placeholder="192.168.1.231" autoComplete="off" value={ip} onChange={e => setIp(e.target.value)} disabled={connecting} />{ipError && <p className="dialog-error" role="alert">{ipError}</p>}<DialogFooter><Button type="button" variant="ghost" onClick={() => setIpOpen(false)} disabled={connecting}>Cancel</Button><Button type="submit" disabled={connecting || !ip.trim()}>{connecting && <LoaderCircle className="animate-spin" />}Connect</Button></DialogFooter></form>
     </DialogContent></Dialog>
-    <Dialog open={!!deleteId} onOpenChange={open => { if (!open && !busy) setDeleteId(null); }}><DialogContent><DialogHeader><DialogTitle>Delete {documents.find(d => d.id === deleteId)?.name}.lua?</DialogTitle><DialogDescription>{documents.find(d => d.id === deleteId)?.address ? 'This removes the saved script from the device.' : 'This removes the script from this browser.'}</DialogDescription></DialogHeader><DialogFooter><Button variant="ghost" disabled={busy} onClick={() => setDeleteId(null)}>Cancel</Button><Button variant="destructive" disabled={busy} onClick={async () => {
+    <Dialog open={!!deleteId} onOpenChange={open => { if (!open && !busy) setDeleteId(null); }}><DialogContent><DialogHeader><DialogTitle>Delete {documents.find(d => d.id === deleteId)?.name}.lua?</DialogTitle><DialogDescription>{documents.find(d => d.id === deleteId)?.address ? 'This removes the saved animation from the device.' : 'This removes the animation from this browser.'}</DialogDescription></DialogHeader><DialogFooter><Button variant="ghost" disabled={busy} onClick={() => setDeleteId(null)}>Cancel</Button><Button variant="destructive" disabled={busy} onClick={async () => {
       const doc = documents.find(d => d.id === deleteId); if (!doc) return; setBusy(true);
       try { if (doc.address && doc.scriptId) await requestHttp(doc.address, { id: nextId++, operation: 9, scriptId: doc.scriptId }); setDocuments(previous => previous.filter(d => d.id !== doc.id)); if (selected === doc.id) setSelected(visible.find(d => d.id !== doc.id)?.id ?? ''); setDeleteId(null); }
       catch (error) { setMessage(String(error)); setDeleteId(null); } finally { setBusy(false); }
