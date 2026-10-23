@@ -58,6 +58,8 @@ test('Enter IP, paginated device scripts, safe Test, and gradient Save', async (
   await page.getByRole('button', { name: 'Connect', exact: true }).click();
   await expect(page.getByRole('combobox', { name: 'Device', exact: true })).toContainText('Desk strip');
   await expect(page.getByRole('button', { name: 'Open Sea.lua' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Open Aurora.lua' })).toHaveCount(0);
+  await expect(page.locator('.file-select')).toHaveCount(2);
   const original = await page.evaluate(() => JSON.parse(localStorage.getItem('luxio-studio-workspace')!).find((d: any) => d.name === 'Aurora').source);
   await page.getByRole('button', { name: 'Open Sunset.lua' }).click();
   await expect(page.getByRole('button', { name: 'Test', exact: true })).toBeEnabled();
@@ -107,14 +109,15 @@ test('discovery and failed device save keep the edited document', async ({ page 
   await page.goto('/');
   await page.getByRole('combobox', { name: 'Device', exact: true }).click();
   await page.getByRole('option', { name: /Desk/ }).click();
-  await page.getByRole('button', { name: 'Actions for Aurora' }).click();
-  await page.getByRole('menuitem', { name: 'Rename', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Open Aurora.lua' })).toHaveCount(0);
+  await page.getByRole('button', { name: 'New animation' }).click();
   await page.getByRole('textbox', { name: 'Animation name' }).fill('Keep this draft');
   await page.getByRole('textbox', { name: 'Animation name' }).press('Enter');
   await expect(page.locator('.error-message')).toContainText('Script storage is full');
   const draft = await page.evaluate(() => JSON.parse(localStorage.getItem('luxio-studio-workspace')!).find((d: any) => d.name === 'Keep this draft'));
-  expect(draft.savedName).toBe('Aurora');
-  expect(draft.address).toBeUndefined();
+  expect(draft.savedName).toBe('');
+  expect(draft.address).toBe('http://192.168.1.50');
+  expect(draft.scriptId).toBeUndefined();
   expect(draft.source).toContain('function loop()');
 });
 

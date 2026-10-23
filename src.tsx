@@ -80,8 +80,8 @@ function Studio() {
   const preview = useRef<{ address: string; id: string } | null>(null);
   const cleanup = useRef<Promise<void> | null>(null);
   const actions = useRef({ save: () => {}, test: () => {} });
-  const current = documents.find(d => d.id === selected);
-  const visible = documents.filter(d => !d.address || d.address === target);
+  const visible = documents.filter(d => target === 'simulator' ? !d.address : d.address === target);
+  const current = visible.find(d => d.id === selected) ?? visible[0];
   const dirty = current && (current.name !== current.savedName || current.source !== current.savedSource);
 
   useEffect(() => {
@@ -126,10 +126,21 @@ function Studio() {
       if (cancelled) return;
       if (status.state) { setCount(status.state.config.ledCount); setStripType(status.state.config.stripType); }
       setDocuments(previous => {
-        const merged = [...previous];
+        const merged = previous.filter(d => d.address !== target || !d.scriptId || list.scripts.some(script => script.id === d.scriptId));
+        // Keep edits to animations removed on the device as local simulator drafts.
+        for (const doc of previous) {
+          if (doc.address === target && doc.scriptId && !list.scripts.some(script => script.id === doc.scriptId)
+            && (doc.name !== doc.savedName || doc.source !== doc.savedSource)) {
+            merged.push({ ...doc, address: undefined, scriptId: undefined });
+          }
+        }
         for (const script of list.scripts) {
-          const found = merged.find(d => d.address === target && d.scriptId === script.id);
+          const index = merged.findIndex(d => d.address === target && d.scriptId === script.id);
+          const found = merged[index];
           if (!found) merged.push({ id: crypto.randomUUID(), address: target, scriptId: script.id, name: script.name, source: null, mode: script.mode === 1 ? 1 : 2, savedName: script.name, savedSource: null });
+          else if (found.name === found.savedName && found.source === found.savedSource) {
+            merged[index] = { ...found, name: script.name, savedName: script.name, source: null, savedSource: null };
+          }
         }
         return merged;
       });
@@ -274,7 +285,7 @@ function Studio() {
           const isChrome = /\b(?:Chrome|Chromium|HeadlessChrome)\//.test(navigator.userAgent) && !/\b(?:Edg|EdgA|OPR|SamsungBrowser)\//.test(navigator.userAgent) && !/\bwv\b/.test(navigator.userAgent);
           if (value !== 'simulator' && !isChrome && !devicePromptSeen) { setDevicePrompt(value); return; }
           if (value === 'enter-ip') { setIpOpen(true); setIpError(''); return; }
-          setBusy(true); void stop().then(() => { setTarget(value); setMessage(''); if (current?.address && current.address !== value) setSelected(documents.find(d => !d.address || d.address === value)?.id ?? ''); }).catch(error => setMessage(String(error))).finally(() => setBusy(false));
+          setBusy(true); void stop().then(() => { setTarget(value); setMessage(''); setSelected(''); }).catch(error => setMessage(String(error))).finally(() => setBusy(false));
         }}>
           <SelectTrigger aria-label="Device" className="device-select"><SelectValue /></SelectTrigger>
           <SelectContent>
@@ -294,10 +305,10 @@ function Studio() {
       {sidebar && <><ResizablePanel defaultSize="230px" minSize="170px" maxSize="360px"><aside className="sidebar">
         <div className="pane-heading"><span>Animations</span><Button variant="ghost" size="icon-xs" aria-label="New animation" disabled={busy} onClick={() => {
           const id = crypto.randomUUID(); const name = 'Untitled';
-          setDocuments(previous => [...previous, { id, name, source: 'function setup()\nend\n\nfunction loop()\n  for i = 0, luxio_get_pixel_count() - 1 do\n    luxio_set_pixel_color(i, 0, 210, 255)\n  end\nend\n', mode: 2, savedName: '', savedSource: '' }]); setSelected(id); setRename(id);
+          setDocuments(previous => [...previous, { id, name, address: target === 'simulator' ? undefined : target, source: 'function setup()\nend\n\nfunction loop()\n  for i = 0, luxio_get_pixel_count() - 1 do\n    luxio_set_pixel_color(i, 0, 210, 255)\n  end\nend\n', mode: 2, savedName: '', savedSource: '' }]); setSelected(id); setRename(id);
         }}><Plus /></Button></div>
         <div className="file-list" aria-label="Animations">
-          {visible.map(doc => <ContextMenu key={doc.id} onOpenChange={open => { if (open) setSelected(doc.id); }}><ContextMenuTrigger asChild disabled={busy}><div className={`file-row ${selected === doc.id ? 'selected' : ''}`}>
+          {visible.map(doc => <ContextMenu key={doc.id} onOpenChange={open => { if (open) setSelected(doc.id); }}><ContextMenuTrigger asChild disabled={busy}><div className={`file-row ${current?.id === doc.id ? 'selected' : ''}`}>
             <button className="file-select" aria-label={`Open ${doc.name}.lua`} disabled={busy} onClick={() => { setSelected(doc.id); setMessage(''); setNotice(''); }} onDoubleClick={() => setRename(doc.id)}><FileCode2 /><span className="file-title">{rename === doc.id ? <input autoFocus disabled={busy} aria-label="Animation name" defaultValue={doc.name} onClick={e => e.stopPropagation()} onFocus={e => e.target.select()} onBlur={e => {
               const name = e.currentTarget.value.trim(); setRename(null);
               if (name === doc.name) return;
@@ -306,13 +317,13 @@ function Studio() {
             }} onKeyDown={e => { if (e.key === 'Enter' || e.key === 'Escape') { e.preventDefault(); if (e.key === 'Escape') e.currentTarget.value = doc.name; e.currentTarget.blur(); } e.stopPropagation(); }} /> : <span>{doc.name}</span>}<small>.lua</small></span>{(doc.name !== doc.savedName || doc.source !== doc.savedSource) && <span className="dirty-dot" aria-label="Unsaved changes" />}</button>
             <DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon-xs" className="file-menu" aria-label={`Actions for ${doc.name}`} disabled={busy}><MoreHorizontal /></Button></DropdownMenuTrigger><DropdownMenuContent align="start">
               <DropdownMenuItem onSelect={() => { setSelected(doc.id); setRename(doc.id); }}>Rename</DropdownMenuItem>
-              <DropdownMenuItem disabled={doc.source === null} onSelect={() => { const id = crypto.randomUUID(); setDocuments(previous => [...previous, { ...doc, id, name: `${doc.name} copy`, address: undefined, scriptId: undefined, savedName: '', savedSource: '' }]); setSelected(id); }}>Duplicate</DropdownMenuItem>
+              <DropdownMenuItem disabled={doc.source === null} onSelect={() => { const id = crypto.randomUUID(); setDocuments(previous => [...previous, { ...doc, id, name: `${doc.name} copy`, address: target === 'simulator' ? undefined : target, scriptId: undefined, savedName: '', savedSource: '' }]); setSelected(id); }}>Duplicate</DropdownMenuItem>
               <DropdownMenuItem disabled={doc.source === null} onSelect={() => { const url = URL.createObjectURL(new Blob([doc.source!], { type: 'text/plain' })); const link = document.createElement('a'); link.href = url; link.download = `${doc.name.replace(/[/\\]/g, '-') || 'animation'}.lua`; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); }}>Download .lua</DropdownMenuItem>
               <DropdownMenuSeparator /><DropdownMenuItem variant="destructive" onSelect={() => setDeleteId(doc.id)}>Delete</DropdownMenuItem>
             </DropdownMenuContent></DropdownMenu>
           </div></ContextMenuTrigger><ContextMenuContent>
             <ContextMenuItem disabled={busy} onSelect={() => { setSelected(doc.id); setRename(doc.id); }}>Rename</ContextMenuItem>
-            <ContextMenuItem disabled={busy || doc.source === null} onSelect={() => { const id = crypto.randomUUID(); setDocuments(previous => [...previous, { ...doc, id, name: `${doc.name} copy`, address: undefined, scriptId: undefined, savedName: '', savedSource: '' }]); setSelected(id); }}>Duplicate</ContextMenuItem>
+            <ContextMenuItem disabled={busy || doc.source === null} onSelect={() => { const id = crypto.randomUUID(); setDocuments(previous => [...previous, { ...doc, id, name: `${doc.name} copy`, address: target === 'simulator' ? undefined : target, scriptId: undefined, savedName: '', savedSource: '' }]); setSelected(id); }}>Duplicate</ContextMenuItem>
             <ContextMenuItem disabled={busy || doc.source === null} onSelect={() => { const url = URL.createObjectURL(new Blob([doc.source!], { type: 'text/plain' })); const link = document.createElement('a'); link.href = url; link.download = `${doc.name.replace(/[/\\]/g, '-') || 'animation'}.lua`; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); }}>Download .lua</ContextMenuItem>
             <ContextMenuSeparator /><ContextMenuItem variant="destructive" disabled={busy} onSelect={() => setDeleteId(doc.id)}>Delete</ContextMenuItem>
           </ContextMenuContent></ContextMenu>)}
@@ -365,7 +376,7 @@ function Studio() {
           if (!result.state) throw new Error('No Luxio device found at this address.');
           await stop();
           setDevices(previous => [...previous.filter(d => d.address !== address), { address, name: result.state!.config.name }]);
-          if (current?.address && current.address !== address) setSelected(documents.find(d => !d.address || d.address === address)?.id ?? '');
+          setSelected('');
           setTarget(address); setMessage(''); setIpOpen(false);
         } catch (error) { setIpError(error instanceof TypeError || (error instanceof DOMException && error.name === 'TimeoutError') ? `${String(error)} Check the IP and local-network permission.` : String(error)); }
         finally { setConnecting(false); }
