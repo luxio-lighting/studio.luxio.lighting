@@ -333,10 +333,11 @@ test('upgrades only untouched simulator examples', async ({ page }) => {
   await page.addInitScript(documents => localStorage.setItem('luxio-studio-workspace', JSON.stringify(documents)), [...documents, device]);
   await page.goto('/');
   await expect(page.getByRole('slider', { name: 'Speed', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Open Aurora.lua' }).click();
   await expect(page.getByRole('spinbutton', { name: 'Spacing', exact: true })).toBeVisible();
-  await expect(page.getByRole('checkbox', { name: 'Reverse', exact: true })).toBeVisible();
+  await expect(page.getByRole('checkbox', { name: 'Pulse', exact: true })).toBeVisible();
   const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('luxio-studio-workspace')!));
-  expect(stored.find((d: any) => d.id === 'Aurora').source).toBe(presets[0].source);
+  expect(stored.find((d: any) => d.id === 'Aurora').source).toBe(presets.find(p => p.name === 'Aurora')!.source);
   expect(stored.find((d: any) => d.id === 'Ember').source).toBe(documents[1].source);
   expect(stored.find((d: any) => d.id === 'device').source).toBe(device.source);
   await expect(page.getByRole('button', { name: 'Open Aurora.lua' }).getByLabel('Unsaved changes')).toHaveCount(0);
@@ -362,4 +363,16 @@ test('new declarations report the firmware requirement before device playback or
   await page.getByRole('button', { name: 'Save', exact: true }).click();
   await expect(page.locator('.error-message')).toContainText('firmware build 21 or newer');
   expect(calls.filter(operation => [7, 8, 31].includes(operation))).toEqual([]);
+});
+
+test('replaces the old Studio catalog with the mobile catalog without losing customized animations', async ({ page }) => {
+  const { previousPresets } = await import('../shared/web/legacy-presets');
+  const { presets } = await import('../shared/web/presets');
+  const documents = previousPresets.map(p => ({ id: p.name, name: p.name, source: p.source, savedSource: p.source, savedName: p.name, mode: 2 }));
+  await page.addInitScript(documents => localStorage.setItem('luxio-studio-workspace', JSON.stringify(documents)), documents);
+  await page.goto('/');
+  await expect(page.locator('.file-select')).toHaveCount(5);
+  expect(await page.locator('.file-select').allTextContents()).toEqual(['Rainbow.lua', 'Colorloop.lua', 'Aurora.lua', 'Ember.lua', 'Tidal.lua']);
+  const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('luxio-studio-workspace')!));
+  expect(stored.map((d: any) => [d.name, d.source])).toEqual(presets.map(p => [p.name, p.source]));
 });

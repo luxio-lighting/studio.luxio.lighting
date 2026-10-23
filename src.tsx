@@ -15,7 +15,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from './component
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from './components/ui/resizable';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './components/ui/tooltip';
 import { presets } from './shared/web/presets';
-import { legacyPresets } from './shared/web/legacy-presets';
+import { legacyPresets, previousPresets } from './shared/web/legacy-presets';
 import { requestHttp, type Color } from './shared/protocol/src/index';
 import { parsePreview } from './shared/protocol/src/preview';
 import { parseParameters, type AnimationParameter } from './shared/protocol/src/parameters';
@@ -52,13 +52,22 @@ try {
   }
 } catch { initial = presets.map(p => ({ id: crypto.randomUUID(), name: p.name, source: p.source, mode: 2, savedName: p.name, savedSource: p.source })); }
 
-// Refresh bundled examples only when their saved and working copies are untouched.
-initial = initial.map(document => {
-  if (document.address || document.parameters?.length || document.savedName !== document.name) return document;
-  const legacy = legacyPresets.find(preset => preset.name === document.name && preset.source === document.source && preset.source === document.savedSource);
-  const preset = legacy && presets.find(preset => preset.name === legacy.name);
-  return preset ? { ...document, source: preset.source, savedSource: preset.source } : document;
+// Replace untouched bundled examples while preserving device files and customized drafts.
+let upgradedPresets = false;
+initial = initial.flatMap(document => {
+  if (document.address || document.savedName !== document.name || document.source !== document.savedSource
+    || document.parameters?.some(p => p.value !== p.defaultValue) || document.savedParameters?.some(p => p.value !== p.defaultValue)) return [document];
+  const legacy = [...legacyPresets, ...previousPresets].find(preset => preset.name === document.name && preset.source === document.source);
+  if (!legacy) return [document];
+  upgradedPresets = true;
+  const preset = presets.find(preset => preset.name === legacy.name);
+  return preset ? [{ ...document, source: preset.source, savedSource: preset.source, parameters: [], savedParameters: [] }] : [];
 });
+if (upgradedPresets) {
+  initial = [...presets.filter(preset => !initial.some(document => !document.address && document.name === preset.name)).map(preset => ({
+    id: crypto.randomUUID(), name: preset.name, source: preset.source, savedSource: preset.source, savedName: preset.name, mode: 2,
+  })), ...initial];
+}
 
 function Studio() {
   const [documents, setDocuments] = useState(initial);

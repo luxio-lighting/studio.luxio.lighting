@@ -1,103 +1,56 @@
+// Matches Luxio iOS LightPreset animations, including source, controls and preview colors.
 export const presets = [
-  { name: 'Aurora', description: 'A slow drift through violet and teal', colors: ['#967aff', '#37d7b0'], source: `-- @preview 967aff,37d7b0
--- @parameter Speed,Slider,50,0,100
--- @parameter Spacing,Number,9,1,64
--- @parameter Reverse,Checkbox,false
-
-function setup() end
-
-function loop()
-  local phase = luxio_millis() / 2600 * luxio_get_parameter("Speed") / 50
-  if luxio_get_parameter("Reverse") then phase = -phase end
-  local spacing = luxio_get_parameter("Spacing")
-  for i = 0, luxio_get_pixel_count() - 1 do
-    local t = (math.sin(i / spacing + phase) + 1) / 2
-    luxio_set_pixel_color(i, math.floor(45 + 105 * t),
-      math.floor(210 - 120 * t), math.floor(175 + 80 * t))
-  end
-end` },
-  { name: 'Ember', description: 'The quiet glow of a fading fire', colors: ['#ff7b3a', '#d13248'], source: `-- @preview ff7b3a,d13248
--- @parameter Speed,Slider,50,0,100
--- @parameter Intensity,Slider,100,0,100
--- @parameter Flicker,Checkbox,true
-
-function setup() end
-
-function loop()
-  local t = luxio_millis() / 1000 * luxio_get_parameter("Speed") / 50
-  local intensity = luxio_get_parameter("Intensity") / 100
-  local flicker = luxio_get_parameter("Flicker")
-  for i = 0, luxio_get_pixel_count() - 1 do
-    local glow = flicker and (math.sin(i * 0.7 + t) + 1) / 2 or 0.5
-    luxio_set_pixel_color(i, math.floor((140 + 115 * glow) * intensity),
-      math.floor((18 + 60 * glow) * intensity), math.floor((5 + 10 * glow) * intensity))
-  end
-end` },
-  { name: 'Tidal', description: 'Deep blue, moving at its own pace', colors: ['#275bff', '#55dce5'], source: `-- @preview 275bff,55dce5
--- @parameter Speed,Slider,50,0,100
--- @parameter Spacing,Number,5,1,64
--- @parameter Reverse,Checkbox,false
-
-function setup() end
-
-function loop()
-  local t = luxio_millis() / 1800 * luxio_get_parameter("Speed") / 50
-  if luxio_get_parameter("Reverse") then t = -t end
-  local spacing = luxio_get_parameter("Spacing")
-  for i = 0, luxio_get_pixel_count() - 1 do
-    local wave = (math.sin(i / spacing - t) + 1) / 2
-    luxio_set_pixel_color(i, 12, math.floor(30 + wave * 150),
-      math.floor(100 + wave * 155))
-  end
-end` },
-  { name: 'Rose', description: 'Soft pink with a gentle breath', colors: ['#f38fb9', '#9e5ad6'], source: `-- @preview f38fb9,9e5ad6
--- @parameter Speed,Slider,50,0,100
--- @parameter Intensity,Slider,100,0,100
--- @parameter Pulse,Checkbox,true
-
-function setup() end
-
-function loop()
-  local phase = luxio_millis() / 1800 * luxio_get_parameter("Speed") / 50
-  local b = luxio_get_parameter("Pulse") and 0.45 + 0.55 * (math.sin(phase) + 1) / 2 or 1
-  b = b * luxio_get_parameter("Intensity") / 100
-  for i = 0, luxio_get_pixel_count() - 1 do
-    luxio_set_pixel_color(i, math.floor(245 * b),
-      math.floor(95 * b), math.floor(160 * b))
-  end
-end` },
-  { name: 'Prism', description: 'A spectrum, one pixel at a time', colors: ['#ff9c5a', '#8884ff'], source: `-- @preview ff9c5a,8884ff
--- @parameter Speed,Slider,50,0,100
--- @parameter Spacing,Number,8,1,64
--- @parameter Reverse,Checkbox,false
-
-function setup() end
-
-function loop()
-  local phase = luxio_millis() / 1600 * luxio_get_parameter("Speed") / 50
-  if luxio_get_parameter("Reverse") then phase = -phase end
-  local spacing = luxio_get_parameter("Spacing")
-  for i = 0, luxio_get_pixel_count() - 1 do
-    local p = i / spacing + phase
-    luxio_set_pixel_color(i, math.floor(127.5 + 127.5 * math.sin(p)),
-      math.floor(127.5 + 127.5 * math.sin(p + 2.094)),
-      math.floor(127.5 + 127.5 * math.sin(p + 4.189)))
-  end
-end` },
-  { name: 'Candlelight', description: 'Warm white, for RGBCCT strips', colors: ['#ffe4ad', '#be8f58'], source: `-- @preview ffe4ad,be8f58
--- @parameter Speed,Slider,50,0,100
--- @parameter Intensity,Slider,100,0,100
--- @parameter Flicker,Checkbox,true
-
-function setup() end
-
-function loop()
-  local phase = luxio_millis() / 900 * luxio_get_parameter("Speed") / 50
-  local glow = luxio_get_parameter("Flicker") and 190 + 30 * math.sin(phase) or 190
-  glow = math.floor(glow * luxio_get_parameter("Intensity") / 100)
-  for i = 0, luxio_get_pixel_count() - 1 do
-    -- index, red, green, blue, white, warm white, cool white
-    luxio_set_pixel_color(i, 0, 0, 0, 0, glow, 0)
-  end
-end` },
+  {
+    "name": "Rainbow",
+    "description": "A moving spectrum across the strip",
+    "colors": [
+      "#ff0000",
+      "#ffff00",
+      "#00ff00",
+      "#00ffff",
+      "#0000ff",
+      "#ff00ff"
+    ],
+    "source": "-- @preview ff0000,ffff00,00ff00,00ffff,0000ff,ff00ff\n-- @parameter Speed,Slider,50,0,100\n-- @parameter Period,Number,20,1,120\n-- @parameter Reverse,Checkbox,false\nfunction setup() end\nfunction loop()\n  local count = luxio_get_pixel_count()\n  local time = luxio_millis() / (luxio_get_parameter(\"Period\") * 1000) * luxio_get_parameter(\"Speed\") / 50\n  if luxio_get_parameter(\"Reverse\") then time = -time end\n  for i = 0, count - 1 do\n    local h = (time + i / count) % 1 * 6\n    local sector = math.floor(h)\n    local up = math.floor((h - sector) * 255)\n    local down = 255 - up\n    local r, g, b = 0, 0, 0\n    if sector == 0 then r, g = 255, up\n    elseif sector == 1 then r, g = down, 255\n    elseif sector == 2 then g, b = 255, up\n    elseif sector == 3 then g, b = down, 255\n    elseif sector == 4 then r, b = up, 255\n    else r, b = 255, down end\n    luxio_set_pixel_color(i, r, g, b)\n  end\nend"
+  },
+  {
+    "name": "Colorloop",
+    "description": "A uniform cycle through the spectrum",
+    "colors": [
+      "#ff0000",
+      "#ffff00",
+      "#00ff00",
+      "#00ffff",
+      "#0000ff",
+      "#ff00ff"
+    ],
+    "source": "-- @preview ff0000,ffff00,00ff00,00ffff,0000ff,ff00ff\n-- @parameter Speed,Slider,50,0,100\n-- @parameter Period,Number,20,1,120\n-- @parameter Reverse,Checkbox,false\nfunction setup() end\nfunction loop()\n  local count = luxio_get_pixel_count()\n  local time = luxio_millis() / (luxio_get_parameter(\"Period\") * 1000) * luxio_get_parameter(\"Speed\") / 50\n  if luxio_get_parameter(\"Reverse\") then time = -time end\n  for i = 0, count - 1 do\n    local h = (time) % 1 * 6\n    local sector = math.floor(h)\n    local up = math.floor((h - sector) * 255)\n    local down = 255 - up\n    local r, g, b = 0, 0, 0\n    if sector == 0 then r, g = 255, up\n    elseif sector == 1 then r, g = down, 255\n    elseif sector == 2 then g, b = 255, up\n    elseif sector == 3 then g, b = down, 255\n    elseif sector == 4 then r, b = up, 255\n    else r, b = 255, down end\n    luxio_set_pixel_color(i, r, g, b)\n  end\nend"
+  },
+  {
+    "name": "Aurora",
+    "description": "A pulsing violet glow",
+    "colors": [
+      "#2d1859",
+      "#8246ff"
+    ],
+    "source": "-- @preview 2d1859,8246ff\n-- @parameter Speed,Slider,50,0,100\n-- @parameter Spacing,Number,8,1,64\n-- @parameter Pulse,Checkbox,true\nfunction setup() end\nfunction loop()\n  local phase = luxio_millis() / 1800 * luxio_get_parameter(\"Speed\") / 50\n  for i = 0, luxio_get_pixel_count() - 1 do\n    local t = luxio_get_parameter(\"Pulse\") and (0.35 + 0.65 * (math.sin(i / luxio_get_parameter(\"Spacing\") + phase) + 1) / 2) or 1\n    luxio_set_pixel_color(i, math.floor(130 * t), math.floor(70 * t), math.floor(255 * t))\n  end\nend"
+  },
+  {
+    "name": "Ember",
+    "description": "A pulsing ember glow",
+    "colors": [
+      "#591804",
+      "#ff460c"
+    ],
+    "source": "-- @preview 591804,ff460c\n-- @parameter Speed,Slider,50,0,100\n-- @parameter Spacing,Number,8,1,64\n-- @parameter Pulse,Checkbox,true\nfunction setup() end\nfunction loop()\n  local phase = luxio_millis() / 1800 * luxio_get_parameter(\"Speed\") / 50\n  for i = 0, luxio_get_pixel_count() - 1 do\n    local t = luxio_get_parameter(\"Pulse\") and (0.35 + 0.65 * (math.sin(i / luxio_get_parameter(\"Spacing\") + phase) + 1) / 2) or 1\n    luxio_set_pixel_color(i, math.floor(255 * t), math.floor(70 * t), math.floor(12 * t))\n  end\nend"
+  },
+  {
+    "name": "Tidal",
+    "description": "A pulsing ocean blue",
+    "colors": [
+      "#053159",
+      "#0f8cff"
+    ],
+    "source": "-- @preview 053159,0f8cff\n-- @parameter Speed,Slider,50,0,100\n-- @parameter Spacing,Number,8,1,64\n-- @parameter Pulse,Checkbox,true\nfunction setup() end\nfunction loop()\n  local phase = luxio_millis() / 1800 * luxio_get_parameter(\"Speed\") / 50\n  for i = 0, luxio_get_pixel_count() - 1 do\n    local t = luxio_get_parameter(\"Pulse\") and (0.35 + 0.65 * (math.sin(i / luxio_get_parameter(\"Spacing\") + phase) + 1) / 2) or 1\n    luxio_set_pixel_color(i, math.floor(15 * t), math.floor(140 * t), math.floor(255 * t))\n  end\nend"
+  }
 ];
