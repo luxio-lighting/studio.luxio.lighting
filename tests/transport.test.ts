@@ -37,6 +37,72 @@ test('USB handles fragmented frames, boot text, paginated libraries, serializati
   await assert.rejects(connection.request({ id: 4, operation: 0 }), /disconnected/);
 });
 
+test('USB uploads a full animation through a small receive queue before the next request', async () => {
+  let incoming: ReadableStreamDefaultController<Uint8Array>;
+  const decoder = new FrameDecoder();
+  const received: ReturnType<typeof decodeRequest>[] = [];
+  let queued = new Uint8Array(0), dropped = 0;
+  let drain: ReturnType<typeof setTimeout> | undefined;
+  let deadline: ReturnType<typeof setTimeout> | undefined;
+  const port = {
+    open: async () => {}, close: async () => {}, setSignals: async () => {},
+    readable: new ReadableStream<Uint8Array>({ start(controller) { incoming = controller; } }),
+    writable: new WritableStream<Uint8Array>({ write(bytes) {
+      // Native USB keeps accepting data while the firmware renders LEDs. Its
+      // 256-byte queue discards overflow until the next loop drains it.
+      const accepted = Math.min(bytes.length, 256 - queued.length);
+      const buffer = new Uint8Array(queued.length + accepted);
+      buffer.set(queued); buffer.set(bytes.subarray(0, accepted), queued.length);
+      queued = buffer; dropped += bytes.length - accepted;
+      if (!drain) drain = setTimeout(() => {
+        const buffered = queued; queued = new Uint8Array(0); drain = undefined;
+        for (const message of decoder.push(buffered)) {
+          const request = decodeRequest(message); received.push(request);
+          incoming.enqueue(frame(encodeResponse({ id: request.id, error: '', scripts: [] })));
+        }
+      }, 60);
+    } }),
+  } as unknown as SerialPort;
+  const connection = new DeviceConnection('usb', port);
+  const source = '-- A multi-kilobyte animation\n' + 'function loop() end\n'.repeat(256);
+  await connection.open();
+  try {
+    const responses = await Promise.race([
+      Promise.all([
+        connection.request({ id: 20, operation: 31, script: { id: '', name: 'Large animation', source } }),
+        connection.request({ id: 21, operation: 0 }),
+      ]),
+      new Promise<never>((_, reject) => { deadline = setTimeout(() => reject(new Error(`USB upload stalled after dropping ${dropped} bytes`)), 3000); }),
+    ]);
+    assert.equal(dropped, 0);
+    assert.deepEqual(received.map(request => request.operation), [31, 0]);
+    assert.equal(received[0].script?.source, source);
+    assert.deepEqual(responses.map(response => response.id), [20, 21]);
+  } finally {
+    clearTimeout(deadline); clearTimeout(drain); await connection.close();
+  }
+});
+
+test('USB disconnect stops an upload and rejects the next queued request', async () => {
+  let firstWrite: () => void;
+  const started = new Promise<void>(resolve => { firstWrite = resolve; });
+  let writes = 0, closed = false;
+  const port = {
+    open: async () => {}, close: async () => { closed = true; }, setSignals: async () => {},
+    readable: new ReadableStream<Uint8Array>(),
+    writable: new WritableStream<Uint8Array>({ write() { writes++; firstWrite(); } }),
+  } as unknown as SerialPort;
+  const connection = new DeviceConnection('usb', port);
+  await connection.open();
+  const responses = Promise.all([
+    assert.rejects(connection.request({ id: 30, operation: 31, script: { id: '', name: 'Animation', source: 'function loop() end\n'.repeat(256) } }), /disconnected/),
+    assert.rejects(connection.request({ id: 31, operation: 0 }), /disconnected/),
+  ]);
+  await started; await connection.close(); await responses;
+  await new Promise(resolve => setTimeout(resolve, 60));
+  assert.equal(writes, 1); assert.equal(closed, true);
+});
+
 test('BLE subscribes before writes, frames chunks of at most 20 bytes, and fails pending work on disconnect', async () => {
   const device = new EventTarget() as BluetoothDevice;
   const tx = new EventTarget() as BluetoothRemoteGATTCharacteristic;

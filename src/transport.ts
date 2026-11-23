@@ -79,8 +79,15 @@ export class DeviceConnection {
           const timer = setTimeout(() => { this.fail(new Error('Device did not respond. Reconnect before trying again.')); void this.close(); }, 15000);
           this.pending = { id: request.id, resolve, reject, timer };
           void (async () => {
-            if (this.writer) await this.writer.write(bytes);
-            else if (this.rx) {
+            if (this.writer) {
+              // Pace large uploads so the ESP32 can drain USB between LED frames.
+              // The host may still buffer writes; firmware also needs RX headroom.
+              for (let index = 0; index < bytes.length; index += 128) {
+                if (this.closed) throw new Error('USB disconnected.');
+                await this.writer.write(bytes.subarray(index, index + 128));
+                if (index + 128 < bytes.length) await new Promise(resolve => setTimeout(resolve, 40));
+              }
+            } else if (this.rx) {
               for (let index = 0; index < bytes.length; index += 20) {
                 if (this.closed) throw new Error('Bluetooth disconnected.');
                 await this.rx.writeValueWithResponse(bytes.slice(index, index + 20));
