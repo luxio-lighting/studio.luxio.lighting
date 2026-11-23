@@ -3,3 +3,5 @@ dist/
 .sdk/
 shared/web/vendor/
 .DS_Store
+
+.env.local

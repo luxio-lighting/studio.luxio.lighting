@@ -15,6 +15,7 @@ export function Flasher({ close, added }: { close: () => void; added: (light: Li
   const [title, setTitle] = useState('Flash your ESP32');
   const [progress, setProgress] = useState<number | null>(null);
   const [log, setLog] = useState('');
+  const flashing = useRef(false);
   const logElement = useRef<HTMLPreElement>(null);
   const supported = Boolean(navigator.serial) && 'usb' in navigator;
   useEffect(() => { if (logElement.current) logElement.current.scrollTop = logElement.current.scrollHeight; }, [log]);
@@ -27,14 +28,15 @@ export function Flasher({ close, added }: { close: () => void; added: (light: Li
     finally { setBusy(false); }
   }
 
-  async function flash() {
-    if (!port || busy) return;
+  async function flash(selectedPort: SerialPort) {
+    if (flashing.current) return;
+    flashing.current = true;
     setBusy(true); setError(''); setLog(''); setProgress(0); setTitle('Flashing…'); setStatus('Detecting your ESP32…');
     let transport: import('esptool-js').Transport | undefined;
     try {
-      for (const connection of connections.values()) if (connection.device === port) await connection.close();
+      for (const connection of connections.values()) if (connection.device === selectedPort) await connection.close();
       const { ESPLoader, Transport } = await import('esptool-js');
-      transport = new Transport(port);
+      transport = new Transport(selectedPort);
       const loader = new ESPLoader({ transport, baudrate: 460800, romBaudrate: 115200, terminal: {
         clean: () => setLog(''), write: text => setLog(previous => (previous + text).slice(-20000)), writeLine: text => setLog(previous => (previous + text + '\n').slice(-20000)),
       } });
@@ -45,9 +47,10 @@ export function Flasher({ close, added }: { close: () => void; added: (light: Li
       const flashBytes = await checkFlashSize(loader, hardware.minimumFlashSize);
       setLog(previous => `${previous}\nDetected flash: ${flashBytes / 1048576} MB\n`);
       setStatus('Downloading and verifying firmware…');
-      const response = await fetch(`https://api.luxio.lighting/updates?chip=${chip}&target=${hardware.target}&build=0&channel=0`, { signal: AbortSignal.timeout(15000) });
+      const localFirmware = import.meta.env.DEV ? import.meta.env.VITE_LOCAL_FIRMWARE_PATH : undefined;
+      const response = await fetch(localFirmware ? `${localFirmware}/${chip}/manifest.json` : `https://api.luxio.lighting/updates?chip=${chip}&target=${hardware.target}&build=0&channel=0`, { signal: AbortSignal.timeout(15000) });
       if (!response.ok) throw new Error(`Firmware service returned HTTP ${response.status}`);
-      const manifest = await response.json() as { chip: string; target: string; minimumFlashSize?: number; size: number; sha256: string; parts: { address: number; url: string; sha256: string; size?: number }[] } | null;
+      const manifest = await response.json() as { build: number; chip: string; target: string; minimumFlashSize?: number; size: number; sha256: string; parts: { address: number; url: string; sha256: string; size?: number }[] } | null;
       if (!manifest) throw new Error(`No public recovery build is available for ${detected} yet`);
       if (manifest.chip !== chip || manifest.target !== hardware.target || !Array.isArray(manifest.parts) || !manifest.parts.length) throw new Error('Invalid recovery firmware manifest');
       if (manifest.minimumFlashSize !== undefined && manifest.minimumFlashSize !== hardware.minimumFlashSize) throw new Error('Incompatible firmware flash requirement');
@@ -55,9 +58,11 @@ export function Flasher({ close, added }: { close: () => void; added: (light: Li
       if (manifest.parts.length !== limits.size || new Set(manifest.parts.map(part => part.address)).size !== limits.size || manifest.parts.some(part => !limits.has(part.address))) throw new Error('Flash parts do not match this chip’s recovery layout');
       const application = manifest.parts.find(part => part.address === hardware.applicationAddress)!;
       if (!Number.isInteger(manifest.size) || manifest.size < 288 || manifest.size > hardware.applicationSize || application.sha256 !== manifest.sha256) throw new Error('USB and OTA application must match');
+      setLog(previous => `${previous}\nFirmware build: ${manifest.build}${localFirmware ? ' (local)' : ''}\n`);
       const files = [];
       for (const part of manifest.parts) {
-        if (!Number.isInteger(part.address) || part.address < 0 || !part.url.startsWith('https://')) throw new Error('Invalid flash manifest');
+        const localPart = localFirmware && part.url.startsWith(`${localFirmware}/${chip}/`) && /^[a-z0-9_-]+\.bin$/.test(part.url.slice(`${localFirmware}/${chip}/`.length));
+        if (!Number.isInteger(part.address) || part.address < 0 || (!part.url.startsWith('https://') && !localPart)) throw new Error('Invalid flash manifest');
         const response = await fetch(part.url, { signal: AbortSignal.timeout(60000) });
         if (!response.ok) throw new Error(`Firmware download returned HTTP ${response.status}`);
         const bytes = new Uint8Array(await response.arrayBuffer());
@@ -80,7 +85,7 @@ export function Flasher({ close, added }: { close: () => void; added: (light: Li
       while (Date.now() < deadline) {
         await new Promise(resolve => setTimeout(resolve, 2000));
         setTitle('Connecting…'); setStatus('Connecting to Luxio via USB…');
-        try { added(await findDevice('usb', port), true); return; }
+        try { added(await findDevice('usb', selectedPort), true); return; }
         catch (error) {
           connectionError = error instanceof Error ? error.message : String(error);
           setLog(previous => `${previous}\nUSB reconnect: ${connectionError}`.slice(-20000));
@@ -90,19 +95,27 @@ export function Flasher({ close, added }: { close: () => void; added: (light: Li
       setStatus('Firmware installed. Luxio has not reconnected yet. Press RESET on the board without holding BOOT, then select its USB port below.');
       setError(connectionError);
     } catch (error) { setTitle('Installation failed'); setError(error instanceof Error ? error.message : String(error)); setStatus('Check the installation log, then try again.'); }
-    finally { if (transport) await disconnectFlasher(transport).catch(() => {}); setBusy(false); }
+    finally { if (transport) await disconnectFlasher(transport).catch(() => {}); flashing.current = false; setBusy(false); }
   }
 
   return <Modal title="Set up Luxio" close={() => { if (!busy) close(); }}><div className="sheet-body flasher-body">
     <ol className="setup-steps" aria-label="Setup progress"><li className={!port ? 'current' : ''} aria-current={!port ? 'step' : undefined}><button disabled={!port || busy || installed} onClick={() => { setPort(null); setProgress(null); setError(''); setLog(''); setStatus(''); setTitle('Flash your ESP32'); }}><b>1</b> Connect</button></li><li className={port ? 'current' : ''} aria-current={port ? 'step' : undefined}><b>2</b> Install</li><li><b>3</b> Configure</li></ol>
     <div className="flasher-intro" role="status" aria-live="polite"><span className="empty-icon">{busy ? <LoaderCircle size={32} className="spinning" /> : installed ? <Check size={32} /> : <Usb size={32} />}</span><h3>{title}</h3><p>{status || (installed ? 'Your light will open automatically when its USB connection is ready.' : port ? 'Install the latest Luxio firmware on your ESP32.' : 'Plug in your ESP32 with a USB data cable, then select it below.')}</p></div>
     {!supported && <p className="field-note">Flashing requires Google Chrome on a computer with USB. You can still use the simulator here.</p>}
-    {!port ? <SheetButton disabled={!supported || busy} onClick={async () => {
-      setError(''); setBusy(true); setTitle('Connecting…'); setStatus('Select your ESP32’s USB port.');
-      try { setPort(await navigator.serial.requestPort()); setTitle('Install Luxio'); }
-      catch (error) { setTitle('Flash your ESP32'); if (!(error instanceof DOMException && error.name === 'NotFoundError')) setError(String(error)); }
-      finally { setBusy(false); setStatus(''); }
-    }}><Usb size={17} /> Connect ESP32</SheetButton> : <div className="flasher-actions">{!installed && <div className={`flash-install${busy ? ' is-flashing' : ''}`}><progress className="flash-progress" value={progress ?? 0} max={100} aria-label="Firmware installation progress" aria-hidden={!busy} /><SheetButton disabled={busy} aria-hidden={busy} tabIndex={busy ? -1 : undefined} onClick={() => void flash()}>Install Luxio</SheetButton></div>}{installed && !busy && <SheetButton onClick={() => void configure()}>Connect to Luxio</SheetButton>}</div>}
+    <div className="flasher-actions">{!installed && <div className={`flash-install${port && busy ? ' is-flashing' : ''}`}>
+      <progress className="flash-progress" value={progress ?? 0} max={100} aria-label="Firmware installation progress" aria-hidden={!port || !busy} />
+      {!port ? <SheetButton disabled={!supported || busy} onClick={async () => {
+        setError(''); setBusy(true); setTitle('Connecting…'); setStatus('Select your ESP32’s USB port.');
+        try {
+          const selectedPort = await navigator.serial.requestPort();
+          setPort(selectedPort);
+          await flash(selectedPort);
+        } catch (error) {
+          setTitle('Flash your ESP32'); setStatus('');
+          if (!(error instanceof DOMException && error.name === 'NotFoundError')) setError(String(error));
+        } finally { setBusy(false); }
+      }}><Usb size={17} /> Connect ESP32</SheetButton> : <SheetButton disabled={busy} aria-hidden={busy} tabIndex={busy ? -1 : undefined} onClick={() => void flash(port)}>Retry</SheetButton>}
+    </div>}{installed && !busy && <SheetButton onClick={() => void configure()}>Connect to Luxio</SheetButton>}</div>
     {log && <details className="flash-log"><summary>Installation log</summary><pre ref={logElement}>{log}</pre></details>}
     {error && <p role="alert" className="error">{error}</p>}
   </div></Modal>;

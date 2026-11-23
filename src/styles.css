@@ -107,7 +107,7 @@ input[type=range]::-moz-range-thumb { width: 19px; height: 19px; background: whi
 .welcome-art svg { z-index: 1; color: #f9e4db; }
 .welcome h1 { font-size: clamp(30px, 3.3vw, 48px); letter-spacing: -1.7px; line-height: 1.2; font-weight: 600; }
 .welcome p { font-size: 15px; color: var(--muted); line-height: 1.7; white-space: pre-line; margin: 20px 0 0; }
-.welcome > .text-button { margin-top: 10px; }
+.welcome-actions { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 10px; color: var(--muted); }
 .control-view { width: 100%; --content-max-width: 1500px; }
 .control-header { position: relative; isolation: isolate; width: calc(100% - 32px); max-width: var(--content-max-width); margin: 16px auto 0; border-radius: 16px; overflow: hidden; border: 1px solid var(--border); }
 .control-header-content { padding: 26px 24px 22px; }
@@ -213,11 +213,12 @@ input::placeholder { color: var(--muted); }
 .setting-row > span:first-child { flex-shrink: 0; }
 .setting-row input:not([type=checkbox]), .setting-row select { min-width: 0; text-align: right; padding: 7px 0; background: none; border: 0; max-width: 65%; width: 220px; }
 .group.strip-settings { overflow: visible; }
-.strip-picker { position: relative; width: 220px; max-width: 75%; min-width: 0; }
+.strip-picker { position: relative; width: max-content; max-width: 75%; min-width: 0; }
 .strip-select { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 36px; padding: 7px 10px; border: 1px solid var(--input); border-radius: var(--radius); background: var(--background); font-size: 13px; }
-.strip-select > span:nth-child(2), .strip-options > li > span:nth-child(2) { flex: 1; text-align: left; overflow-wrap: anywhere; }
+.strip-select > span:nth-child(2), .strip-options > li > span:nth-child(2) { flex: 1; min-width: 0; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.strip-select .strip-led { width: auto; }
 .strip-select > svg, .strip-options > li > svg { flex-shrink: 0; }
-.strip-options { position: absolute; right: 0; top: calc(100% + 5px); z-index: 4; width: 100%; max-height: 280px; overflow-y: auto; list-style: none; margin: 0; padding: 4px; background: #202020; border: 1px solid var(--input); border-radius: var(--radius); box-shadow: 0 8px 24px #0006; }
+.strip-options { position: absolute; right: 0; top: calc(100% + 5px); z-index: 4; width: max-content; min-width: 100%; max-width: calc(100vw - 80px); max-height: 280px; overflow-y: auto; list-style: none; margin: 0; padding: 4px; background: #202020; border: 1px solid var(--input); border-radius: var(--radius); box-shadow: 0 8px 24px #0006; }
 .strip-options > li { display: flex; align-items: center; gap: 12px; min-height: 38px; padding: 7px 6px; border-radius: 4px; cursor: pointer; font-size: 13px; }
 .strip-options > li[aria-selected=true] { background: #262626; }
 .strip-options > li:hover, .strip-options > li:focus { background: #404040; outline: none; }
@@ -234,7 +235,8 @@ input::placeholder { color: var(--muted); }
 .setting-row .muted { color: var(--muted); text-align: right; overflow-wrap: anywhere; }
 .setting-row input[type=checkbox] { width: 20px; height: 20px; accent-color: var(--accent); }
 .padded { padding: 14px 16px; margin: 0; }
-.settings-sheet { overflow: hidden; }
+/* Native modal dialogs have opposing insets; auto height stretches them. */
+.settings-sheet { height: fit-content; overflow: hidden; }
 .settings-sheet .sheet-inner { display: flex; flex-direction: column; max-height: inherit; }
 .settings-sheet .sheet-header { flex-shrink: 0; }
 .settings-body { padding-top: 0; min-height: 0; overflow-y: auto; }
@@ -351,7 +353,7 @@ input::placeholder { color: var(--muted); }
 .browser-guidance .back-button { position: absolute; left: 14px; top: 20px; }
 @media (max-width: 760px) { .animation-layout .preset-grid { grid-template-columns: repeat(3,minmax(0,1fr)); } }
 
-.wifi-form { display: flex; flex-direction: column; gap: 12px; padding-top: 24px; min-height: 360px; font-size: 13px; }
+.wifi-form { display: flex; flex-direction: column; gap: 12px; padding-top: 24px; font-size: 13px; }
 .wifi-form > label { font-weight: 500; }
 .wifi-picker { position: relative; min-width: 0; }
 .wifi-select { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; min-height: 40px; padding: 7px 44px 7px 10px; background: var(--background); border: 1px solid var(--input); border-radius: var(--radius); font-size: 13px; }
@@ -362,7 +364,7 @@ input::placeholder { color: var(--muted); }
 .wifi-network-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .wifi-refresh { position: absolute; top: 1px; right: 1px; width: 36px; height: 38px; display: grid; place-items: center; color: var(--muted); border-radius: 0 var(--radius) var(--radius) 0; }
 .wifi-refresh:hover { color: var(--foreground); background: #ffffff08; }
-.wifi-options { position: absolute; top: calc(100% + 5px); left: 0; z-index: 3; width: 100%; max-height: 260px; overflow-y: auto; list-style: none; margin: 0; padding: 4px; background: #202020; border: 1px solid var(--input); border-radius: var(--radius); box-shadow: 0 8px 24px #0006; }
+.wifi-options { position: fixed; inset: auto; max-height: 260px; overflow-y: auto; list-style: none; margin: 0; color: var(--foreground); padding: 4px; background: #202020; border: 1px solid var(--input); border-radius: var(--radius); box-shadow: 0 8px 24px #0006; }
 .wifi-options [role=option] { display: flex; align-items: center; gap: 8px; min-height: 36px; padding: 7px 8px; border-radius: 3px; cursor: pointer; font-size: 13px; line-height: 20px; }
 .wifi-options [aria-selected=true] { background: #262626; }
 .wifi-options [role=option]:hover, .wifi-options [role=option]:focus { background: #404040; outline: none; }
@@ -373,9 +375,13 @@ input::placeholder { color: var(--muted); }
 .wifi-lock { position: absolute; right: -2px; bottom: -1px; width: 12px; height: 12px; background: #202020; }
 .wifi-selected .wifi-lock { background: var(--background); }
 .wifi-password { display: flex; flex-direction: column; gap: 8px; }
-.wifi-password input { width: 100%; }
+.wifi-password-field { position: relative; }
+.wifi-password input { width: 100%; padding-right: 44px; }
+.wifi-password-toggle { position: absolute; right: 3px; top: 50%; transform: translateY(-50%); display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: var(--radius); color: var(--muted); }
+.wifi-password-toggle:hover:not(:disabled) { color: var(--foreground); background: #ffffff08; }
 .wifi-scan-status { color: var(--muted); font-size: 12px; line-height: 1.6; min-height: 20px; }
-.wifi-form > .primary-button { margin-top: auto; }
+.wifi-form > .primary-button { margin-top: 12px; }
+.wifi-scan-status:empty { display: none; }
 
 .setup-steps { display: flex; align-items: center; list-style: none; padding: 0; margin: 0; }
 .setup-steps li { display: flex; align-items: center; gap: 7px; color: var(--muted); font-size: 12px; white-space: nowrap; }
@@ -419,3 +425,12 @@ input::placeholder { color: var(--muted); }
 .studio-loading > button { position: absolute; top: 10px; right: 16px; }
 .studio-loading > button { display: grid; place-items: center; width: 36px; height: 36px; color: #fff; border: 0; background: none; cursor: pointer; }
 .studio-loading > svg { animation: spin 1.3s linear infinite; }
+
+/* Post-flash setup shares the settings controls and fixed action footer. */
+.strip-fields { border: 0; padding: 0; margin: 0; min-width: 0; }
+.led-count-stepper { display: grid; grid-template-columns: 36px 64px 36px; align-items: center; gap: 6px; }
+.setting-row .led-count-stepper input[type=number] { width: 100%; max-width: none; padding: 7px 0; text-align: center; font-variant-numeric: tabular-nums; appearance: textfield; }
+.led-count-stepper input::-webkit-inner-spin-button, .led-count-stepper input::-webkit-outer-spin-button { appearance: none; margin: 0; }
+.led-count-stepper .icon-button { width: 36px; height: 36px; background: #ffffff0b; border-radius: 50%; }
+.settings-save { display: flex; flex-direction: column; gap: 10px; }
+.setup-skip { align-self: center; font-size: 14px; padding: 8px 12px; background: none; }

@@ -1,8 +1,8 @@
 <div align="center">
   <img src="public/luxio-jellyfish.png" alt="" width="80" />
-  <h1>Luxio Web App</h1>
+  <h1>Luxio Studio</h1>
   <p>Your lights, your atmosphere. In your browser.</p>
-  <p><a href="https://app.luxio.lighting/"><strong>Open Luxio →</strong></a> · <a href="https://luxio.lighting/">Website</a> · <a href="#self-hosting">Self-hosting</a></p>
+  <p><a href="https://app.luxio.lighting/"><strong>Open Luxio Studio →</strong></a> · <a href="https://luxio.lighting/">Website</a> · <a href="#self-hosting">Self-hosting</a></p>
 </div>
 
 ![Luxio showing sample Living Room, Studio Desk, Bedside, Bookshelf and Kitchen lights, with a color wheel and gradient presets.](docs/images/luxio-app.png)
