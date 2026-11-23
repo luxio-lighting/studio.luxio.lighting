@@ -2,7 +2,7 @@
   <img src="public/luxio-jellyfish.png" alt="" width="80" />
   <h1>Luxio Studio</h1>
   <p>Your lights, your atmosphere. In your browser.</p>
-  <p><a href="https://app.luxio.lighting/"><strong>Open Luxio Studio →</strong></a> · <a href="https://luxio.lighting/">Website</a> · <a href="#self-hosting">Self-hosting</a></p>
+  <p><a href="https://studio.luxio.lighting/"><strong>Open Luxio Studio →</strong></a> · <a href="https://luxio.lighting/">Website</a> · <a href="#self-hosting">Self-hosting</a></p>
 </div>
 
 ![Luxio showing sample Living Room, Studio Desk, Bedside, Bookshelf and Kitchen lights, with a color wheel and gradient presets.](docs/images/luxio-app.png)
@@ -19,7 +19,7 @@ Control your Luxio lights, install firmware on an ESP32, and design your own ani
 
 ## Connect your lights
 
-Open [app.luxio.lighting](https://app.luxio.lighting/) in an up-to-date Google Chrome browser. For Wi-Fi, use the same network as your lights and allow local network access when prompted. Select a light in the sidebar to start controlling it.
+Open [studio.luxio.lighting](https://studio.luxio.lighting/) in an up-to-date Google Chrome browser. For Wi-Fi, use the same network as your lights and allow local network access when prompted. Select a light in the sidebar to start controlling it.
 
 | Connection | What you need |
 | --- | --- |
@@ -41,8 +41,8 @@ Luxio builds to a folder of static files. You do not need an application server,
 Install **Node.js 24** and Git, then run:
 
 ```sh
-git clone https://github.com/luxio-lighting/app.luxio.lighting.git
-cd app.luxio.lighting
+git clone https://github.com/luxio-lighting/studio.luxio.lighting.git
+cd studio.luxio.lighting
 npm ci
 npm run build
 ```
