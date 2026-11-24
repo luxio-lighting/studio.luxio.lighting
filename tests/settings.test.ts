@@ -41,3 +41,20 @@ test('legacy Gledopto firmware offers all four supported types without duplicati
   const types = [...list.matchAll(/<li[^>]*>(.*?)<\/li>/g)].map(match => match[1].replace(/<[^>]+>/g, ''));
   assert.deepEqual(types, ['WS2805', 'WS2814', 'WS2812', 'SK6812']);
 });
+
+for (const enabled of [false, true]) test(`button settings: enabled=${enabled}`, () => {
+  const light: Light = { id: 'button-test', address: '', online: true,
+    state: { build: 46, deviceId: 'button-test', config: { name: 'Desk', stripType: 'WS2805', ledCount: 60, gpio: 16, channel: 0, button: { enabled, gpio: 18, press: 1 } }, on: true, brightness: 100, color: { red: 255, green: 0, blue: 0, white: 0, warmWhite: 0, coolWhite: 0 }, activeScriptId: '', lanIp: '' },
+    library: { colors: [], gradients: [], scripts: [] } };
+  const html = renderToStaticMarkup(createElement(Settings, { light, close() {}, removed() {}, notice() {} }));
+  assert.ok(html.indexOf('>BUTTON</p>') > html.indexOf('>RELAY</p>'));
+  assert.equal(html.includes('aria-label="Button GPIO"'), enabled);
+  assert.equal(html.includes('aria-label="Button Press"'), enabled);
+  assert.equal(html.includes('aria-label="Button Long Press"'), enabled);
+  if (enabled) {
+    assert.match(html, /aria-label="Button GPIO"[^>]*value="18"/);
+    assert.match(html, /<option value="1" selected="">Cycle Saved Presets/);
+    assert.match(html, /aria-label="Button Long Press" disabled=""/);
+    assert.ok(html.includes('Turn Off'));
+  }
+});

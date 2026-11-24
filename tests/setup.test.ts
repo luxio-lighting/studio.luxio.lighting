@@ -258,3 +258,43 @@ test('selecting a USB board immediately starts flashing; cancelling does not; fa
     if (usbBefore) Object.defineProperty(navigator, 'usb', usbBefore); else Reflect.deleteProperty(navigator, 'usb');
   }
 });
+
+test('Button settings edit and save independently, hide when off, and reject shared pins', async () => {
+  const light: Light = { id: 'usb:button-test', address: '', transport: 'usb', online: true,
+    state: { build: 46, deviceId: 'button-test', config: { name: 'Desk', stripType: 'WS2805', ledCount: 60, gpio: 16, channel: 0, relay: { enabled: true, gpio: 17, inverted: false }, button: { enabled: false, gpio: 18, press: 0 } }, on: true, brightness: 80, color: { red: 0, green: 255, blue: 0, white: 0, warmWhite: 0, coolWhite: 0 }, activeScriptId: '', lanIp: '' },
+    library: { colors: [], gradients: [], scripts: [] } };
+  const writes: Request[] = [];
+  connections.set(light.id, { request: async (request: Request) => {
+    writes.push(structuredClone(request));
+    if (request.config) light.state.config = structuredClone(decodeRequest(encodeRequest(request)).config!);
+    return { id: request.id, error: '', state: structuredClone(light.state), scripts: [], colors: [], gradients: [] };
+  }} as unknown as InstanceType<typeof DeviceConnection>);
+  const root = createRoot(document.getElementById('root')!);
+  const toggle = () => document.querySelector<HTMLButtonElement>('[aria-label="Enable Button"]')!;
+  const save = () => document.querySelector<HTMLButtonElement>('button[form="settings-form"]')!;
+  try {
+    await act(async () => root.render(createElement(Settings, { light, close() {}, removed() {}, notice() {} })));
+    assert.equal(document.querySelector('[aria-label="Button GPIO"]'), null);
+    await act(async () => toggle().click());
+    const gpio = document.querySelector<HTMLInputElement>('[aria-label="Button GPIO"]')!;
+    assert.equal(gpio.value, '18');
+    assert.equal(document.querySelector<HTMLSelectElement>('[aria-label="Button Long Press"]')!.disabled, true);
+    const action = document.querySelector<HTMLSelectElement>('[aria-label="Button Press"]')!;
+    await act(async () => { action.value = '1'; action.dispatchEvent(new dom.window.Event('change', { bubbles: true })); });
+    const setValue = Object.getOwnPropertyDescriptor(dom.window.HTMLInputElement.prototype, 'value')!.set!;
+    for (const pin of ['16', '17', '-1', '62']) {
+      await act(async () => { setValue.call(gpio, pin); gpio.dispatchEvent(new dom.window.Event('input', { bubbles: true })); });
+      assert.equal(save().disabled, true, `GPIO ${pin} must not be saved`);
+    }
+    await act(async () => { setValue.call(gpio, '18'); gpio.dispatchEvent(new dom.window.Event('input', { bubbles: true })); });
+    await act(async () => save().click());
+    assert.deepEqual(writes.at(-1)?.config?.button, { enabled: true, gpio: 18, press: 1 });
+    assert.equal(light.state.brightness, 80);
+    await act(async () => toggle().click());
+    assert.equal(document.querySelector('[aria-label="Button Press"]'), null);
+    await act(async () => save().click());
+    assert.deepEqual(writes.at(-1)?.config?.button, { enabled: false, gpio: 18, press: 1 });
+  } finally {
+    await act(async () => root.unmount()); connections.delete(light.id);
+  }
+});
