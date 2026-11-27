@@ -123,21 +123,13 @@ export function Flasher({ close, added }: { close: () => void; added: (light: Li
     {log && <details className="flash-log"><summary>Installation log</summary><pre ref={logElement}>{log}</pre></details>}
     {error && <p role="alert" className="error">{error}</p>}
     {linuxHelp && <Modal title="USB access on Linux" close={() => setLinuxHelp(false)}><div className="sheet-body linux-usb-help">
-      <p>On Ubuntu and Debian, Chrome may need permission to access your ESP32’s USB and serial interfaces. You only need to set this up once.</p>
+      <p>On Ubuntu and Debian, Chrome may need permission to access your ESP32’s serial port. You only need to set this up once.</p>
       <ol>
-        <li><p>Open Terminal and run these commands. Enter your Linux password when asked.</p><pre tabIndex={0}><code>{`sudo usermod -aG dialout "$USER"
-sudo tee /etc/udev/rules.d/70-luxio.rules > /dev/null <<'EOF'
-# Espressif, Silicon Labs, WCH and FTDI USB interfaces
-SUBSYSTEM=="usb", ATTR{idVendor}=="303a", MODE="0660", GROUP="dialout", TAG+="uaccess"
-SUBSYSTEM=="usb", ATTR{idVendor}=="10c4", MODE="0660", GROUP="dialout", TAG+="uaccess"
-SUBSYSTEM=="usb", ATTR{idVendor}=="1a86", MODE="0660", GROUP="dialout", TAG+="uaccess"
-SUBSYSTEM=="usb", ATTR{idVendor}=="0403", MODE="0660", GROUP="dialout", TAG+="uaccess"
-EOF
-sudo udevadm control --reload-rules`}</code></pre><p>These rules cover ESP32 USB interfaces and common USB-to-serial adapters. On other Linux distributions, the serial group may be <code>uucp</code> instead of <code>dialout</code>.</p></li>
+        <li><p>Open Terminal and run this command. Enter your Linux password when asked.</p><pre tabIndex={0}><code>{'sudo usermod -aG dialout "$USER"'}</code></pre><p>On other Linux distributions, the serial group may be <code>uucp</code> instead of <code>dialout</code>.</p></li>
         <li><p>Log out of your Linux desktop and log back in to apply the group change. Unplug your ESP32, plug it back in, then reopen Chrome and try <strong>Connect ESP32</strong> again.</p></li>
       </ol>
       <p>Still missing? Use a USB data cable, close any serial monitors, and try Google Chrome installed directly from Google if your browser is installed through Snap or Flatpak.</p>
-      <p className="linux-usb-help-sources"><a href="https://developer.chrome.com/docs/capabilities/usb#before_we_start" target="_blank" rel="noopener noreferrer">Chrome USB documentation</a> · <a href="https://docs.espressif.com/projects/esptool/en/latest/esp32/troubleshooting.html" target="_blank" rel="noopener noreferrer">ESP32 troubleshooting</a></p>
+      <p className="linux-usb-help-sources"><a href="https://docs.espressif.com/projects/esptool/en/latest/esp32/troubleshooting.html" target="_blank" rel="noopener noreferrer">ESP32 troubleshooting</a></p>
       <SheetButton variant="secondary" onClick={() => setLinuxHelp(false)}>Back to setup</SheetButton>
     </div></Modal>}
   </div></Modal>;
