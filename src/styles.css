@@ -398,6 +398,11 @@ input::placeholder { color: var(--muted); }
 .flasher-intro h3 { margin: 0 0 12px; font-size: 22px; }
 .flasher-intro p { color: var(--muted); font-size: 13px; line-height: 1.7; }
 .flasher-actions { display: flex; flex-direction: column; gap: 12px; }
+.linux-usb-help-link { display: flex; margin: 8px auto 0; }
+.linux-usb-help ol { padding-left: 20px; font-size: 13px; line-height: 1.7; color: var(--muted); }
+.linux-usb-help li + li { margin-top: 18px; }
+.linux-usb-help pre { padding: 14px; margin: 12px 0; overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius); background: var(--background); color: var(--foreground); font-size: 11px; line-height: 1.7; white-space: pre; }
+.linux-usb-help-sources a { text-decoration: underline; text-underline-offset: 3px; }
 .flash-install { position: relative; height: 44px; border-radius: var(--radius); overflow: hidden; transition: height .32s ease .1s, border-radius .32s ease .1s; }
 .flash-install.is-flashing { height: 8px; border-radius: 999px; }
 .flash-install .primary-button { position: absolute; inset: 0; min-height: 44px; transition: opacity .12s; }

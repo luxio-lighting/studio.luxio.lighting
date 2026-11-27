@@ -15,9 +15,12 @@ export function Flasher({ close, added }: { close: () => void; added: (light: Li
   const [title, setTitle] = useState('Flash your ESP32');
   const [progress, setProgress] = useState<number | null>(null);
   const [log, setLog] = useState('');
+  const [linuxHelp, setLinuxHelp] = useState(false);
   const flashing = useRef(false);
   const logElement = useRef<HTMLPreElement>(null);
   const supported = Boolean(navigator.serial) && 'usb' in navigator;
+  const platform = (navigator as Navigator & { userAgentData?: { platform: string } }).userAgentData?.platform ?? navigator.platform;
+  const linux = /linux/i.test(platform || navigator.userAgent) && !/android|cros/i.test(navigator.userAgent);
   useEffect(() => { if (logElement.current) logElement.current.scrollTop = logElement.current.scrollHeight; }, [log]);
 
   async function configure() {
@@ -116,7 +119,26 @@ export function Flasher({ close, added }: { close: () => void; added: (light: Li
         } finally { setBusy(false); }
       }}><Usb size={17} /> Connect ESP32</SheetButton> : <SheetButton disabled={busy} aria-hidden={busy} tabIndex={busy ? -1 : undefined} onClick={() => void flash(port)}>Retry</SheetButton>}
     </div>}{installed && !busy && <SheetButton onClick={() => void configure()}>Connect to Luxio</SheetButton>}</div>
+    {linux && !busy && !installed && <button type="button" className="text-button linux-usb-help-link" onClick={() => setLinuxHelp(true)}>No devices showing up on Linux?</button>}
     {log && <details className="flash-log"><summary>Installation log</summary><pre ref={logElement}>{log}</pre></details>}
     {error && <p role="alert" className="error">{error}</p>}
+    {linuxHelp && <Modal title="USB access on Linux" close={() => setLinuxHelp(false)}><div className="sheet-body linux-usb-help">
+      <p>On Ubuntu and Debian, Chrome may need permission to access your ESP32’s USB and serial interfaces. You only need to set this up once.</p>
+      <ol>
+        <li><p>Open Terminal and run these commands. Enter your Linux password when asked.</p><pre tabIndex={0}><code>{`sudo usermod -aG dialout "$USER"
+sudo tee /etc/udev/rules.d/70-luxio.rules > /dev/null <<'EOF'
+# Espressif, Silicon Labs, WCH and FTDI USB interfaces
+SUBSYSTEM=="usb", ATTR{idVendor}=="303a", MODE="0660", GROUP="dialout", TAG+="uaccess"
+SUBSYSTEM=="usb", ATTR{idVendor}=="10c4", MODE="0660", GROUP="dialout", TAG+="uaccess"
+SUBSYSTEM=="usb", ATTR{idVendor}=="1a86", MODE="0660", GROUP="dialout", TAG+="uaccess"
+SUBSYSTEM=="usb", ATTR{idVendor}=="0403", MODE="0660", GROUP="dialout", TAG+="uaccess"
+EOF
+sudo udevadm control --reload-rules`}</code></pre><p>These rules cover ESP32 USB interfaces and common USB-to-serial adapters. On other Linux distributions, the serial group may be <code>uucp</code> instead of <code>dialout</code>.</p></li>
+        <li><p>Log out of your Linux desktop and log back in to apply the group change. Unplug your ESP32, plug it back in, then reopen Chrome and try <strong>Connect ESP32</strong> again.</p></li>
+      </ol>
+      <p>Still missing? Use a USB data cable, close any serial monitors, and try Google Chrome installed directly from Google if your browser is installed through Snap or Flatpak.</p>
+      <p className="linux-usb-help-sources"><a href="https://developer.chrome.com/docs/capabilities/usb#before_we_start" target="_blank" rel="noopener noreferrer">Chrome USB documentation</a> · <a href="https://docs.espressif.com/projects/esptool/en/latest/esp32/troubleshooting.html" target="_blank" rel="noopener noreferrer">ESP32 troubleshooting</a></p>
+      <SheetButton variant="secondary" onClick={() => setLinuxHelp(false)}>Back to setup</SheetButton>
+    </div></Modal>}
   </div></Modal>;
 }
